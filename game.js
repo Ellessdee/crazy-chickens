@@ -22,6 +22,12 @@ bgImage.src = 'Gemini_Generated_Image_l8dqdwl8dqdwl8dq.png';
 let bgLoaded = false;
 bgImage.onload = () => { bgLoaded = true; };
 
+// ---- Start screen laptop image ----
+const laptopImage = new Image();
+laptopImage.src = '1.jpg.avif';
+let laptopImgLoaded = false;
+laptopImage.onload = () => { laptopImgLoaded = true; };
+
 // ---- Game state ----
 let state = 'menu'; // menu | playing | gameover
 let score = 0;
@@ -1015,60 +1021,296 @@ function drawCrosshair() {
     ctx.restore();
 }
 
-// ---- Menu screen ----
+// ---- Menu screen — dark hacker room ----
 function drawMenu() {
-    drawBackground();
     const w = W(), h = H();
+    const t = Date.now() / 1000;
 
-    // Overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    // === DARK ROOM BACKGROUND ===
+    // Dark gradient wall
+    const wallGrad = ctx.createLinearGradient(0, 0, 0, h);
+    wallGrad.addColorStop(0, '#0a0a12');
+    wallGrad.addColorStop(0.5, '#0d0d18');
+    wallGrad.addColorStop(1, '#08080e');
+    ctx.fillStyle = wallGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Title
-    ctx.fillStyle = '#ffcc00';
-    ctx.strokeStyle = '#663300';
-    ctx.lineWidth = 6;
-    ctx.font = `bold ${Math.min(72, w * 0.08)}px Arial Black, Arial`;
+    // Subtle wall texture (random noise)
+    ctx.globalAlpha = 0.03;
+    for (let i = 0; i < 80; i++) {
+        const nx = Math.sin(i * 127.1) * 0.5 + 0.5;
+        const ny = Math.sin(i * 311.7) * 0.5 + 0.5;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(nx * w, ny * h, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+
+    // === AMBIENT GLOW from monitor ===
+    const glowGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, 50, w * 0.5, h * 0.45, w * 0.5);
+    glowGrad.addColorStop(0, 'rgba(30, 60, 120, 0.15)');
+    glowGrad.addColorStop(0.5, 'rgba(20, 40, 80, 0.06)');
+    glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // === FLOOR ===
+    ctx.fillStyle = '#0c0c14';
+    ctx.fillRect(0, h * 0.82, w, h * 0.18);
+    // Floor line
+    ctx.strokeStyle = '#1a1a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.82);
+    ctx.lineTo(w, h * 0.82);
+    ctx.stroke();
+
+    // === DESK ===
+    const deskY = h * 0.62;
+    const deskW = w * 0.7;
+    const deskX = (w - deskW) / 2;
+    const deskH = h * 0.06;
+
+    // Desk surface — dark wood
+    const deskGrad = ctx.createLinearGradient(deskX, deskY, deskX, deskY + deskH);
+    deskGrad.addColorStop(0, '#2a1f1a');
+    deskGrad.addColorStop(0.3, '#1e1510');
+    deskGrad.addColorStop(1, '#151010');
+    ctx.fillStyle = deskGrad;
+    ctx.beginPath();
+    ctx.roundRect(deskX, deskY, deskW, deskH, [3, 3, 0, 0]);
+    ctx.fill();
+
+    // Desk edge highlight
+    ctx.strokeStyle = '#3a2a20';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(deskX, deskY);
+    ctx.lineTo(deskX + deskW, deskY);
+    ctx.stroke();
+
+    // Desk legs
+    ctx.fillStyle = '#1a1210';
+    ctx.fillRect(deskX + 20, deskY + deskH, 12, h * 0.2);
+    ctx.fillRect(deskX + deskW - 32, deskY + deskH, 12, h * 0.2);
+
+    // === LAPTOP ===
+    const laptopW = Math.min(450, w * 0.38);
+    const laptopH = laptopW * 0.65;
+    const laptopX = w / 2 - laptopW / 2;
+    const laptopY = deskY - laptopH - 8;
+
+    // Screen bezel (back of lid)
+    ctx.fillStyle = '#1a1a22';
+    ctx.beginPath();
+    ctx.roundRect(laptopX - 8, laptopY - 8, laptopW + 16, laptopH + 16, [6, 6, 0, 0]);
+    ctx.fill();
+    // Bezel border
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(laptopX - 8, laptopY - 8, laptopW + 16, laptopH + 16, [6, 6, 0, 0]);
+    ctx.stroke();
+
+    // Screen area (dark bg)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
+
+    // === IMAGE ON LAPTOP SCREEN ===
+    if (laptopImgLoaded) {
+        // Draw the image to fill the screen area, preserving aspect ratio
+        const imgRatio = laptopImage.width / laptopImage.height;
+        const screenRatio = laptopW / laptopH;
+        let imgDrawW, imgDrawH, imgDrawX, imgDrawY;
+        if (screenRatio > imgRatio) {
+            imgDrawW = laptopW;
+            imgDrawH = laptopW / imgRatio;
+            imgDrawX = laptopX;
+            imgDrawY = laptopY + (laptopH - imgDrawH) / 2;
+        } else {
+            imgDrawH = laptopH;
+            imgDrawW = laptopH * imgRatio;
+            imgDrawX = laptopX + (laptopW - imgDrawW) / 2;
+            imgDrawY = laptopY;
+        }
+        // Clip to screen area
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(laptopX, laptopY, laptopW, laptopH);
+        ctx.clip();
+        ctx.drawImage(laptopImage, imgDrawX, imgDrawY, imgDrawW, imgDrawH);
+        ctx.restore();
+    } else {
+        // Loading placeholder
+        ctx.fillStyle = '#0a2a0a';
+        ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
+        ctx.fillStyle = '#0f0';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading...', w / 2, laptopY + laptopH / 2);
+    }
+
+    // Screen glow / reflection
+    ctx.globalAlpha = 0.06;
+    const screenGlow = ctx.createLinearGradient(laptopX, laptopY, laptopX, laptopY + laptopH);
+    screenGlow.addColorStop(0, '#ffffff');
+    screenGlow.addColorStop(0.5, 'transparent');
+    screenGlow.addColorStop(1, 'transparent');
+    ctx.fillStyle = screenGlow;
+    ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
+    ctx.globalAlpha = 1;
+
+    // Screen glow onto room
+    const monitorGlow = ctx.createRadialGradient(w / 2, laptopY + laptopH / 2, 20, w / 2, laptopY + laptopH / 2, laptopW);
+    monitorGlow.addColorStop(0, 'rgba(100, 140, 200, 0.08)');
+    monitorGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = monitorGlow;
+    ctx.fillRect(0, 0, w, h);
+
+    // Laptop base (keyboard area on desk)
+    ctx.fillStyle = '#1c1c26';
+    ctx.beginPath();
+    ctx.roundRect(laptopX - 15, deskY - 8, laptopW + 30, 10, [0, 0, 3, 3]);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Keyboard keys (tiny rectangles)
+    ctx.fillStyle = '#252530';
+    const kbX = laptopX - 5;
+    const kbY = deskY - 6;
+    const kbW = laptopW + 10;
+    for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 14; col++) {
+            const keyW = kbW / 15;
+            const kx = kbX + 4 + col * (keyW + 1);
+            const ky = kbY + row * 4;
+            ctx.fillRect(kx, ky, keyW - 1, 3);
+        }
+    }
+
+    // === ROOM DETAILS ===
+
+    // LED strips on wall (hacker aesthetic)
+    const ledColors = ['#ff004488', '#00ff4488', '#0044ff88'];
+    for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = ledColors[i];
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.3 + Math.sin(t * 2 + i) * 0.15;
+        const ly = h * 0.05 + i * 12;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.1, ly);
+        ctx.lineTo(w * 0.9, ly);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Small blinking LED on laptop (webcam)
+    ctx.fillStyle = Math.sin(t * 3) > 0.3 ? '#00ff00' : '#003300';
+    ctx.beginPath();
+    ctx.arc(w / 2, laptopY - 4, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Coffee mug on desk
+    const mugX = deskX + deskW - 60;
+    const mugY = deskY - 22;
+    ctx.fillStyle = '#1a1a24';
+    ctx.beginPath();
+    ctx.roundRect(mugX, mugY, 20, 22, [0, 0, 3, 3]);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // Mug handle
+    ctx.beginPath();
+    ctx.arc(mugX + 22, mugY + 10, 6, -Math.PI / 2, Math.PI / 2);
+    ctx.stroke();
+    // Steam
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    for (let s = 0; s < 2; s++) {
+        ctx.globalAlpha = 0.12;
+        ctx.beginPath();
+        const sx = mugX + 6 + s * 8;
+        ctx.moveTo(sx, mugY - 2);
+        ctx.quadraticCurveTo(sx + Math.sin(t * 2 + s) * 4, mugY - 12, sx + Math.sin(t * 3 + s) * 3, mugY - 20);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Mouse on desk
+    ctx.fillStyle = '#1a1a24';
+    ctx.beginPath();
+    ctx.ellipse(deskX + 80, deskY - 8, 10, 14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2a3a';
+    ctx.stroke();
+
+    // === MATRIX-STYLE FALLING CHARACTERS (subtle) ===
+    ctx.font = '12px monospace';
+    ctx.globalAlpha = 0.07;
+    ctx.fillStyle = '#00ff41';
+    for (let i = 0; i < 20; i++) {
+        const cx = Math.sin(i * 73.7) * 0.5 + 0.5;
+        const chars = '01アイウエオカキクケコ';
+        const ch = chars[Math.floor((t * 2 + i * 3) % chars.length)];
+        const cy = ((t * 30 + i * 60) % h);
+        ctx.fillText(ch, cx * w, cy);
+    }
+    ctx.globalAlpha = 1;
+
+    // === UI TEXT ===
+
+    // Title with glitch effect
     ctx.textAlign = 'center';
-    ctx.strokeText('CRAZY CHICKENS', w / 2, h * 0.3);
-    ctx.fillText('CRAZY CHICKENS', w / 2, h * 0.3);
+    const titleSize = Math.min(60, w * 0.07);
+    ctx.font = `bold ${titleSize}px Arial Black, Arial`;
+
+    // Glitch offset
+    const glitch = Math.random() < 0.05;
+    if (glitch) {
+        ctx.fillStyle = '#ff0040';
+        ctx.fillText('CRAZY CHICKENS', w / 2 + 3, h * 0.18 - 2);
+        ctx.fillStyle = '#00ffaa';
+        ctx.fillText('CRAZY CHICKENS', w / 2 - 3, h * 0.18 + 2);
+    }
+    ctx.fillStyle = '#00ff41';
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur = 15;
+    ctx.fillText('CRAZY CHICKENS', w / 2, h * 0.18);
+    ctx.shadowBlur = 0;
 
     // Subtitle
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 3;
-    ctx.font = `bold ${Math.min(24, w * 0.03)}px Arial Black, Arial`;
-    ctx.strokeText('A Moorhuhn-style shooting game', w / 2, h * 0.3 + 40);
-    ctx.fillText('A Moorhuhn-style shooting game', w / 2, h * 0.3 + 40);
+    ctx.fillStyle = '#4a8a4a';
+    ctx.font = `${Math.min(18, w * 0.025)}px monospace`;
+    ctx.fillText('> initializing chicken_hunt.exe ...', w / 2, h * 0.18 + 35);
 
     // High score
     if (highScore > 0) {
-        ctx.fillStyle = '#ffaa00';
-        ctx.font = 'bold 22px Arial Black, Arial';
-        ctx.strokeText(`High Score: ${highScore}`, w / 2, h * 0.45);
-        ctx.fillText(`High Score: ${highScore}`, w / 2, h * 0.45);
+        ctx.fillStyle = '#ff8800';
+        ctx.font = 'bold 20px monospace';
+        ctx.fillText(`[HIGH SCORE: ${highScore}]`, w / 2, h * 0.86);
     }
 
     // Start prompt
-    const pulse = 0.7 + Math.sin(Date.now() / 300) * 0.3;
+    const pulse = 0.5 + Math.sin(t * 4) * 0.5;
     ctx.globalAlpha = pulse;
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold ${Math.min(30, w * 0.04)}px Arial Black, Arial`;
-    ctx.strokeText('Click anywhere to start!', w / 2, h * 0.58);
-    ctx.fillText('Click anywhere to start!', w / 2, h * 0.58);
+    ctx.fillStyle = '#00ff41';
+    ctx.font = `bold ${Math.min(24, w * 0.035)}px monospace`;
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur = 10;
+    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.92);
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
-    // Instructions
-    ctx.fillStyle = '#ddd';
-    ctx.font = `${Math.min(16, w * 0.02)}px Arial, sans-serif`;
+    // Instructions (bottom, subtle)
+    ctx.fillStyle = '#335533';
+    ctx.font = `${Math.min(13, w * 0.017)}px monospace`;
     const instructions = [
-        'Shoot the chickens! Smaller = more points',
-        'R to reload  |  8 shells per clip  |  90 seconds',
-        'P to toggle POOP MODE — throw poop with realistic physics!',
-        'Golden chickens are worth 75 points!',
+        'SHOOT chickens | R = reload | P = POOP MODE | 90 sec',
     ];
     instructions.forEach((line, i) => {
-        ctx.fillText(line, w / 2, h * 0.68 + i * 25);
+        ctx.fillText(line, w / 2, h * 0.97 + i * 18);
     });
 
     drawCrosshair();
