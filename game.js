@@ -1688,106 +1688,7 @@ function drawMenu() {
         }
     }
 
-    // === BAND-AID + LED on the laptop webcam in the image ===
-    // Position relative to the image: the laptop screen top-center is roughly at 38% x, 18% y
-    const bandX = w * 0.38;
-    const bandY = h * 0.18;
-    const ledOn = Math.sin(t * 3) > 0.3;
-
-    ctx.save();
-    ctx.translate(bandX, bandY);
-    ctx.rotate(0.12);
-
-    // Band-aid shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.roundRect(-18, -6, 36, 13, 6);
-    ctx.fill();
-
-    // Band-aid body
-    ctx.fillStyle = '#d4a574';
-    ctx.beginPath();
-    ctx.roundRect(-17, -7, 34, 12, 5);
-    ctx.fill();
-    ctx.strokeStyle = '#b8895a';
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-
-    // Band-aid pad (center gauze)
-    ctx.fillStyle = '#e8d8c4';
-    ctx.fillRect(-7, -5, 14, 8);
-
-    // Band-aid holes
-    ctx.fillStyle = '#c49a6e';
-    for (let bx = -4; bx <= 4; bx += 4) {
-        for (let by = -2; by <= 2; by += 4) {
-            ctx.beginPath();
-            ctx.arc(bx, by, 0.8, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    // Band-aid texture lines
-    ctx.strokeStyle = '#c49a6e';
-    ctx.lineWidth = 0.3;
-    ctx.beginPath();
-    ctx.moveTo(-17, -2); ctx.lineTo(-8, -2);
-    ctx.moveTo(-17, 1); ctx.lineTo(-8, 1);
-    ctx.moveTo(8, -2); ctx.lineTo(17, -2);
-    ctx.moveTo(8, 1); ctx.lineTo(17, 1);
-    ctx.stroke();
-
-    // LED glow through the band-aid
-    if (ledOn) {
-        const bandGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
-        bandGlow.addColorStop(0, 'rgba(0, 255, 50, 0.4)');
-        bandGlow.addColorStop(0.3, 'rgba(0, 255, 50, 0.15)');
-        bandGlow.addColorStop(1, 'rgba(0, 255, 50, 0)');
-        ctx.fillStyle = bandGlow;
-        ctx.beginPath();
-        ctx.arc(0, 0, 12, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Brighter center
-        ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
-        ctx.beginPath();
-        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Light leaking around edges
-        ctx.globalAlpha = 0.25;
-        ctx.fillStyle = '#00ff44';
-        ctx.beginPath();
-        ctx.ellipse(-7, 0, 1.8, 4.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.ellipse(7, 0, 1.8, 4.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-    } else {
-        ctx.fillStyle = 'rgba(0, 80, 20, 0.1)';
-        ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // Peeling corner
-    ctx.fillStyle = '#ddb88a';
-    ctx.beginPath();
-    ctx.moveTo(15, -7);
-    ctx.quadraticCurveTo(18, -8, 17.5, -4.5);
-    ctx.lineTo(15, -4.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.moveTo(15, -4.5);
-    ctx.lineTo(17, -4);
-    ctx.lineTo(15, -3.5);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
+    // (band-aid removed — doesn't align with zoomed-out image)
 
     // === MATRIX-STYLE FALLING CHARACTERS (subtle) ===
     ctx.font = '12px monospace';
@@ -1802,58 +1703,63 @@ function drawMenu() {
     }
     ctx.globalAlpha = 1;
 
-    // === UI TEXT ===
-
-    // Title with glitch effect — top of screen
+    // === UI TEXT — using the black areas above and below the image ===
     ctx.textAlign = 'center';
-    const titleSize = Math.min(56, w * 0.065);
+
+    // ---- TOP AREA (black gradient zone) ----
+
+    // Title with glitch effect
+    const titleSize = Math.min(64, w * 0.075);
     ctx.font = `bold ${titleSize}px Arial Black, Arial`;
 
-    // (title is over black gradient — no extra backdrop needed)
-
-    // Glitch offset
     const glitch = Math.random() < 0.05;
     if (glitch) {
         ctx.fillStyle = '#ff0040';
-        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.08 - 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.07 - 2);
         ctx.fillStyle = '#00ffaa';
-        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.08 + 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.07 + 2);
     }
     ctx.fillStyle = '#00ff41';
     ctx.shadowColor = '#00ff41';
-    ctx.shadowBlur = 20;
-    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.08);
+    ctx.shadowBlur = 25;
+    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.07);
     ctx.shadowBlur = 0;
 
-    // Subtitle
-    ctx.fillStyle = '#66aa66';
-    ctx.font = `${Math.min(16, w * 0.022)}px monospace`;
-    ctx.fillText('> initializing creep_hunt.exe ...', w / 2, h * 0.08 + 30);
+    // Subtitle / tagline
+    ctx.fillStyle = '#55cc55';
+    ctx.font = `${Math.min(16, w * 0.02)}px monospace`;
+    ctx.shadowColor = '#00ff41';
+    ctx.shadowBlur = 6;
+    ctx.fillText('> some creeps on an island are secretly running the world_', w / 2, h * 0.07 + 34);
+    ctx.shadowBlur = 0;
 
-    // (bottom is already black from gradient)
+    // ---- BOTTOM AREA (black gradient zone) ----
 
     // High score
     if (highScore > 0) {
         ctx.fillStyle = '#ff8800';
-        ctx.font = 'bold 18px monospace';
-        ctx.fillText(`[HIGH SCORE: ${highScore}]`, w / 2, h * 0.90);
+        ctx.shadowColor = '#ff8800';
+        ctx.shadowBlur = 8;
+        ctx.font = 'bold 22px monospace';
+        ctx.fillText(`HIGH SCORE: ${highScore}`, w / 2, h * 0.88);
+        ctx.shadowBlur = 0;
     }
 
-    // Start prompt
+    // Start prompt — big and pulsing
     const pulse = 0.5 + Math.sin(t * 4) * 0.5;
     ctx.globalAlpha = pulse;
     ctx.fillStyle = '#00ff41';
-    ctx.font = `bold ${Math.min(22, w * 0.03)}px monospace`;
+    ctx.font = `bold ${Math.min(28, w * 0.035)}px monospace`;
     ctx.shadowColor = '#00ff41';
-    ctx.shadowBlur = 12;
-    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.94);
+    ctx.shadowBlur = 15;
+    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.93);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
-    // Instructions
-    ctx.fillStyle = '#446644';
-    ctx.font = `${Math.min(12, w * 0.015)}px monospace`;
-    ctx.fillText('SHOOT creeps | R = reload | P = POOP MODE | 90 sec', w / 2, h * 0.98);
+    // Controls info
+    ctx.fillStyle = '#3a6a3a';
+    ctx.font = `${Math.min(14, w * 0.018)}px monospace`;
+    ctx.fillText('SHOOT creeps  |  R = reload  |  P = POOP MODE  |  90 sec', w / 2, h * 0.97);
 
     drawCrosshair();
 }
