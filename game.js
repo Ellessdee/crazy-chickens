@@ -22,6 +22,12 @@ bgImage.src = 'Gemini_Generated_Image_l8dqdwl8dqdwl8dq.png';
 let bgLoaded = false;
 bgImage.onload = () => { bgLoaded = true; };
 
+// ---- Start screen background ----
+const menuBgImage = new Image();
+menuBgImage.src = 'unnamed-2.jpg';
+let menuBgLoaded = false;
+menuBgImage.onload = () => { menuBgLoaded = true; };
+
 // ---- Start screen laptop image ----
 const laptopImage = new Image();
 laptopImage.src = '1.jpg.avif';
@@ -1588,419 +1594,129 @@ function drawCrosshair() {
     ctx.restore();
 }
 
-// ---- Menu screen — dark hacker room ----
+// ---- Menu screen — hacker room image ----
 function drawMenu() {
     const w = W(), h = H();
     const t = Date.now() / 1000;
 
-    // === DARK ROOM BACKGROUND ===
-    // Dark gradient wall
-    const wallGrad = ctx.createLinearGradient(0, 0, 0, h);
-    wallGrad.addColorStop(0, '#0a0a12');
-    wallGrad.addColorStop(0.5, '#0d0d18');
-    wallGrad.addColorStop(1, '#08080e');
-    ctx.fillStyle = wallGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle wall texture (random noise)
-    ctx.globalAlpha = 0.03;
-    for (let i = 0; i < 80; i++) {
-        const nx = Math.sin(i * 127.1) * 0.5 + 0.5;
-        const ny = Math.sin(i * 311.7) * 0.5 + 0.5;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(nx * w, ny * h, 2, 2);
-    }
-    ctx.globalAlpha = 1;
-
-    // === AMBIENT GLOW from monitor ===
-    const glowGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, 50, w * 0.5, h * 0.45, w * 0.5);
-    glowGrad.addColorStop(0, 'rgba(30, 60, 120, 0.15)');
-    glowGrad.addColorStop(0.5, 'rgba(20, 40, 80, 0.06)');
-    glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = glowGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // === FLOOR ===
-    ctx.fillStyle = '#0c0c14';
-    ctx.fillRect(0, h * 0.82, w, h * 0.18);
-    // Floor line
-    ctx.strokeStyle = '#1a1a2a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, h * 0.82);
-    ctx.lineTo(w, h * 0.82);
-    ctx.stroke();
-
-    // === DESK ===
-    const deskY = h * 0.62;
-    const deskW = w * 0.7;
-    const deskX = (w - deskW) / 2;
-    const deskH = h * 0.06;
-
-    // Desk surface — dark wood
-    const deskGrad = ctx.createLinearGradient(deskX, deskY, deskX, deskY + deskH);
-    deskGrad.addColorStop(0, '#2a1f1a');
-    deskGrad.addColorStop(0.3, '#1e1510');
-    deskGrad.addColorStop(1, '#151010');
-    ctx.fillStyle = deskGrad;
-    ctx.beginPath();
-    ctx.roundRect(deskX, deskY, deskW, deskH, [3, 3, 0, 0]);
-    ctx.fill();
-
-    // Desk edge highlight
-    ctx.strokeStyle = '#3a2a20';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(deskX, deskY);
-    ctx.lineTo(deskX + deskW, deskY);
-    ctx.stroke();
-
-    // Desk legs
-    ctx.fillStyle = '#1a1210';
-    ctx.fillRect(deskX + 20, deskY + deskH, 12, h * 0.2);
-    ctx.fillRect(deskX + deskW - 32, deskY + deskH, 12, h * 0.2);
-
-    // === LAPTOP ===
-    const laptopW = Math.min(750, w * 0.68);
-    const laptopH = laptopW * 0.56;
-    const laptopX = w / 2 - laptopW / 2;
-    const laptopY = deskY - laptopH - 8;
-
-    // Screen bezel (back of lid)
-    ctx.fillStyle = '#1a1a22';
-    ctx.beginPath();
-    ctx.roundRect(laptopX - 8, laptopY - 8, laptopW + 16, laptopH + 16, [6, 6, 0, 0]);
-    ctx.fill();
-    // Bezel border
-    ctx.strokeStyle = '#2a2a3a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(laptopX - 8, laptopY - 8, laptopW + 16, laptopH + 16, [6, 6, 0, 0]);
-    ctx.stroke();
-
-    // Screen area (dark bg)
-    ctx.fillStyle = '#000';
-    ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
-
-    // === IMAGE ON LAPTOP SCREEN ===
-    if (laptopImgLoaded) {
-        // Draw the image to fill the screen area, preserving aspect ratio
-        const imgRatio = laptopImage.width / laptopImage.height;
-        const screenRatio = laptopW / laptopH;
-        let imgDrawW, imgDrawH, imgDrawX, imgDrawY;
-        if (screenRatio > imgRatio) {
-            imgDrawW = laptopW;
-            imgDrawH = laptopW / imgRatio;
-            imgDrawX = laptopX;
-            imgDrawY = laptopY + (laptopH - imgDrawH) / 2;
+    // === BACKGROUND IMAGE ===
+    if (menuBgLoaded) {
+        const imgRatio = menuBgImage.width / menuBgImage.height;
+        const canvasRatio = w / h;
+        let dw, dh, dx, dy;
+        if (canvasRatio > imgRatio) {
+            dw = w; dh = w / imgRatio; dx = 0; dy = (h - dh) / 2;
         } else {
-            imgDrawH = laptopH;
-            imgDrawW = laptopH * imgRatio;
-            imgDrawX = laptopX + (laptopW - imgDrawW) / 2;
-            imgDrawY = laptopY;
+            dh = h; dw = h * imgRatio; dx = (w - dw) / 2; dy = 0;
         }
-        // Clip to screen area
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(laptopX, laptopY, laptopW, laptopH);
-        ctx.clip();
-        ctx.drawImage(laptopImage, imgDrawX, imgDrawY, imgDrawW, imgDrawH);
-        ctx.restore();
+        ctx.drawImage(menuBgImage, dx, dy, dw, dh);
     } else {
-        // Loading placeholder
-        ctx.fillStyle = '#0a2a0a';
-        ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
-        ctx.fillStyle = '#0f0';
-        ctx.font = '14px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('Loading...', w / 2, laptopY + laptopH / 2);
+        ctx.fillStyle = '#0a0a12';
+        ctx.fillRect(0, 0, w, h);
     }
 
-    // Screen glow / reflection
-    ctx.globalAlpha = 0.06;
-    const screenGlow = ctx.createLinearGradient(laptopX, laptopY, laptopX, laptopY + laptopH);
-    screenGlow.addColorStop(0, '#ffffff');
-    screenGlow.addColorStop(0.5, 'transparent');
-    screenGlow.addColorStop(1, 'transparent');
-    ctx.fillStyle = screenGlow;
-    ctx.fillRect(laptopX, laptopY, laptopW, laptopH);
-    ctx.globalAlpha = 1;
+    // (wall texture removed — using image)
 
-    // Screen glow onto room
-    const monitorGlow = ctx.createRadialGradient(w / 2, laptopY + laptopH / 2, 20, w / 2, laptopY + laptopH / 2, laptopW);
-    monitorGlow.addColorStop(0, 'rgba(100, 140, 200, 0.08)');
-    monitorGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = monitorGlow;
-    ctx.fillRect(0, 0, w, h);
-
-    // Laptop base (keyboard area on desk)
-    ctx.fillStyle = '#1c1c26';
-    ctx.beginPath();
-    ctx.roundRect(laptopX - 15, deskY - 8, laptopW + 30, 10, [0, 0, 3, 3]);
-    ctx.fill();
-    ctx.strokeStyle = '#2a2a3a';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Keyboard keys (tiny rectangles)
-    ctx.fillStyle = '#252530';
-    const kbX = laptopX - 5;
-    const kbY = deskY - 6;
-    const kbW = laptopW + 10;
-    for (let row = 0; row < 2; row++) {
-        for (let col = 0; col < 14; col++) {
-            const keyW = kbW / 15;
-            const kx = kbX + 4 + col * (keyW + 1);
-            const ky = kbY + row * 4;
-            ctx.fillRect(kx, ky, keyW - 1, 3);
-        }
-    }
-
-    // === ROOM DETAILS ===
-
-    // LED strips on wall (hacker aesthetic)
-    const ledColors = ['#ff004488', '#00ff4488', '#0044ff88'];
-    for (let i = 0; i < 3; i++) {
-        ctx.strokeStyle = ledColors[i];
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.3 + Math.sin(t * 2 + i) * 0.15;
-        const ly = h * 0.05 + i * 12;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.1, ly);
-        ctx.lineTo(w * 0.9, ly);
-        ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Webcam LED with band-aid over it
-    const ledX = w / 2;
-    const ledY = laptopY - 4;
+    // === BAND-AID + LED on the laptop webcam in the image ===
+    // Position relative to the image: the laptop screen top-center is roughly at 38% x, 18% y
+    const bandX = w * 0.38;
+    const bandY = h * 0.18;
     const ledOn = Math.sin(t * 3) > 0.3;
 
-    // Band-aid (Pflaster) — skin-colored rectangle with rounded ends
     ctx.save();
-    ctx.translate(ledX, ledY);
-    ctx.rotate(0.15); // slightly crooked, like hastily stuck on
+    ctx.translate(bandX, bandY);
+    ctx.rotate(0.12);
 
     // Band-aid shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.roundRect(-16, -5.5, 32, 12, 5);
+    ctx.roundRect(-18, -6, 36, 13, 6);
     ctx.fill();
 
     // Band-aid body
     ctx.fillStyle = '#d4a574';
     ctx.beginPath();
-    ctx.roundRect(-15, -6, 30, 11, 5);
+    ctx.roundRect(-17, -7, 34, 12, 5);
     ctx.fill();
     ctx.strokeStyle = '#b8895a';
-    ctx.lineWidth = 0.5;
+    ctx.lineWidth = 0.6;
     ctx.stroke();
 
     // Band-aid pad (center gauze)
     ctx.fillStyle = '#e8d8c4';
-    ctx.fillRect(-6, -4, 12, 7);
+    ctx.fillRect(-7, -5, 14, 8);
 
-    // Band-aid holes (ventilation dots)
+    // Band-aid holes
     ctx.fillStyle = '#c49a6e';
     for (let bx = -4; bx <= 4; bx += 4) {
         for (let by = -2; by <= 2; by += 4) {
             ctx.beginPath();
-            ctx.arc(bx, by, 0.7, 0, Math.PI * 2);
+            ctx.arc(bx, by, 0.8, 0, Math.PI * 2);
             ctx.fill();
         }
     }
 
-    // Band-aid edge texture lines
+    // Band-aid texture lines
     ctx.strokeStyle = '#c49a6e';
     ctx.lineWidth = 0.3;
     ctx.beginPath();
-    ctx.moveTo(-15, -2); ctx.lineTo(-7, -2);
-    ctx.moveTo(-15, 1); ctx.lineTo(-7, 1);
-    ctx.moveTo(7, -2); ctx.lineTo(15, -2);
-    ctx.moveTo(7, 1); ctx.lineTo(15, 1);
+    ctx.moveTo(-17, -2); ctx.lineTo(-8, -2);
+    ctx.moveTo(-17, 1); ctx.lineTo(-8, 1);
+    ctx.moveTo(8, -2); ctx.lineTo(17, -2);
+    ctx.moveTo(8, 1); ctx.lineTo(17, 1);
     ctx.stroke();
 
-    // LED glow bleeding THROUGH the band-aid
+    // LED glow through the band-aid
     if (ledOn) {
-        // Soft green glow through gauze
-        const bandGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 10);
-        bandGlow.addColorStop(0, 'rgba(0, 255, 50, 0.35)');
-        bandGlow.addColorStop(0.4, 'rgba(0, 255, 50, 0.12)');
+        const bandGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 12);
+        bandGlow.addColorStop(0, 'rgba(0, 255, 50, 0.4)');
+        bandGlow.addColorStop(0.3, 'rgba(0, 255, 50, 0.15)');
         bandGlow.addColorStop(1, 'rgba(0, 255, 50, 0)');
         ctx.fillStyle = bandGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
         ctx.fill();
 
-        // Brighter center dot through gauze
-        ctx.fillStyle = 'rgba(100, 255, 100, 0.25)';
+        // Brighter center
+        ctx.fillStyle = 'rgba(100, 255, 100, 0.3)';
         ctx.beginPath();
-        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Edge light leaking around band-aid sides
-        ctx.globalAlpha = 0.2;
+        // Light leaking around edges
+        ctx.globalAlpha = 0.25;
         ctx.fillStyle = '#00ff44';
         ctx.beginPath();
-        ctx.ellipse(-6, 0, 1.5, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(-7, 0, 1.8, 4.5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.ellipse(6, 0, 1.5, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(7, 0, 1.8, 4.5, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
     } else {
-        // Faint residual glow even when "off"
-        ctx.fillStyle = 'rgba(0, 80, 20, 0.08)';
+        ctx.fillStyle = 'rgba(0, 80, 20, 0.1)';
         ctx.beginPath();
-        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.arc(0, 0, 7, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Band-aid peeling corner (top-right, slightly lifted)
+    // Peeling corner
     ctx.fillStyle = '#ddb88a';
     ctx.beginPath();
-    ctx.moveTo(13, -6);
-    ctx.quadraticCurveTo(16, -7, 15.5, -4);
-    ctx.lineTo(13, -4);
+    ctx.moveTo(15, -7);
+    ctx.quadraticCurveTo(18, -8, 17.5, -4.5);
+    ctx.lineTo(15, -4.5);
     ctx.closePath();
     ctx.fill();
-    // Shadow under peeling corner
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.moveTo(13, -4);
+    ctx.moveTo(15, -4.5);
+    ctx.lineTo(17, -4);
     ctx.lineTo(15, -3.5);
-    ctx.lineTo(13, -3);
     ctx.closePath();
     ctx.fill();
 
     ctx.restore();
-
-    // Coffee mug on desk
-    const mugX = deskX + deskW - 60;
-    const mugY = deskY - 22;
-    ctx.fillStyle = '#1a1a24';
-    ctx.beginPath();
-    ctx.roundRect(mugX, mugY, 20, 22, [0, 0, 3, 3]);
-    ctx.fill();
-    ctx.strokeStyle = '#2a2a3a';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // Mug handle
-    ctx.beginPath();
-    ctx.arc(mugX + 22, mugY + 10, 6, -Math.PI / 2, Math.PI / 2);
-    ctx.stroke();
-    // Steam
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    for (let s = 0; s < 2; s++) {
-        ctx.globalAlpha = 0.12;
-        ctx.beginPath();
-        const sx = mugX + 6 + s * 8;
-        ctx.moveTo(sx, mugY - 2);
-        ctx.quadraticCurveTo(sx + Math.sin(t * 2 + s) * 4, mugY - 12, sx + Math.sin(t * 3 + s) * 3, mugY - 20);
-        ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Mouse on desk
-    ctx.fillStyle = '#1a1a24';
-    ctx.beginPath();
-    ctx.ellipse(deskX + 80, deskY - 8, 10, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#2a2a3a';
-    ctx.stroke();
-
-    // === DESK CHAIR (in front of desk) ===
-    const chairX = w / 2;
-    const chairY = h * 0.78;
-
-    // Chair base / star legs
-    ctx.strokeStyle = '#2a2a2a';
-    ctx.lineWidth = 3;
-    for (let leg = 0; leg < 5; leg++) {
-        const angle = (leg / 5) * Math.PI - Math.PI / 2 + 0.3;
-        const legLen = 35;
-        const lx = Math.cos(angle) * legLen;
-        const ly = Math.abs(Math.sin(angle)) * legLen * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(chairX, chairY + 20);
-        ctx.lineTo(chairX + lx, chairY + 20 + ly);
-        ctx.stroke();
-        // Caster wheels
-        ctx.fillStyle = '#1a1a1a';
-        ctx.beginPath();
-        ctx.arc(chairX + lx, chairY + 20 + ly, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = '#2a2a2a';
-    }
-
-    // Chair hydraulic cylinder
-    ctx.fillStyle = '#222';
-    ctx.fillRect(chairX - 3, chairY - 20, 6, 42);
-    // Chrome ring
-    ctx.fillStyle = '#444';
-    ctx.fillRect(chairX - 5, chairY + 15, 10, 4);
-
-    // Chair seat (from the side, slight perspective)
-    ctx.fillStyle = '#1a1a20';
-    ctx.beginPath();
-    ctx.roundRect(chairX - 40, chairY - 24, 80, 12, 4);
-    ctx.fill();
-    ctx.strokeStyle = '#2a2a34';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    // Seat cushion top
-    ctx.fillStyle = '#222230';
-    ctx.beginPath();
-    ctx.roundRect(chairX - 38, chairY - 28, 76, 8, [4, 4, 0, 0]);
-    ctx.fill();
-    ctx.stroke();
-
-    // Chair backrest
-    ctx.fillStyle = '#1a1a22';
-    ctx.beginPath();
-    ctx.roundRect(chairX - 34, chairY - 80, 68, 55, [8, 8, 2, 2]);
-    ctx.fill();
-    ctx.strokeStyle = '#2a2a34';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Backrest cushion details (stitching lines)
-    ctx.strokeStyle = '#252530';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(chairX - 20, chairY - 75);
-    ctx.lineTo(chairX - 20, chairY - 28);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(chairX + 20, chairY - 75);
-    ctx.lineTo(chairX + 20, chairY - 28);
-    ctx.stroke();
-    // Lumbar support bump
-    ctx.fillStyle = '#202028';
-    ctx.beginPath();
-    ctx.ellipse(chairX, chairY - 45, 28, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Armrests
-    for (let arm = -1; arm <= 1; arm += 2) {
-        const armX = chairX + arm * 42;
-        // Armrest support (vertical)
-        ctx.fillStyle = '#222';
-        ctx.fillRect(armX - 2, chairY - 30, 4, 12);
-        // Armrest pad (horizontal)
-        ctx.fillStyle = '#1a1a22';
-        ctx.beginPath();
-        ctx.roundRect(armX - 14, chairY - 34, 28, 6, 3);
-        ctx.fill();
-        ctx.strokeStyle = '#2a2a34';
-        ctx.stroke();
-    }
 
     // === MATRIX-STYLE FALLING CHARACTERS (subtle) ===
     ctx.font = '12px monospace';
@@ -2017,57 +1733,60 @@ function drawMenu() {
 
     // === UI TEXT ===
 
-    // Title with glitch effect
+    // Title with glitch effect — top of screen
     ctx.textAlign = 'center';
-    const titleSize = Math.min(60, w * 0.07);
+    const titleSize = Math.min(56, w * 0.065);
     ctx.font = `bold ${titleSize}px Arial Black, Arial`;
+
+    // Dark backdrop behind title for readability
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, w, h * 0.14);
 
     // Glitch offset
     const glitch = Math.random() < 0.05;
     if (glitch) {
         ctx.fillStyle = '#ff0040';
-        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.18 - 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.08 - 2);
         ctx.fillStyle = '#00ffaa';
-        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.18 + 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.08 + 2);
     }
     ctx.fillStyle = '#00ff41';
     ctx.shadowColor = '#00ff41';
-    ctx.shadowBlur = 15;
-    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.18);
+    ctx.shadowBlur = 20;
+    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.08);
     ctx.shadowBlur = 0;
 
     // Subtitle
-    ctx.fillStyle = '#4a8a4a';
-    ctx.font = `${Math.min(18, w * 0.025)}px monospace`;
-    ctx.fillText('> initializing creep_hunt.exe ...', w / 2, h * 0.18 + 35);
+    ctx.fillStyle = '#66aa66';
+    ctx.font = `${Math.min(16, w * 0.022)}px monospace`;
+    ctx.fillText('> initializing creep_hunt.exe ...', w / 2, h * 0.08 + 30);
+
+    // Bottom bar for UI elements
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, h * 0.85, w, h * 0.15);
 
     // High score
     if (highScore > 0) {
         ctx.fillStyle = '#ff8800';
-        ctx.font = 'bold 20px monospace';
-        ctx.fillText(`[HIGH SCORE: ${highScore}]`, w / 2, h * 0.86);
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(`[HIGH SCORE: ${highScore}]`, w / 2, h * 0.90);
     }
 
     // Start prompt
     const pulse = 0.5 + Math.sin(t * 4) * 0.5;
     ctx.globalAlpha = pulse;
     ctx.fillStyle = '#00ff41';
-    ctx.font = `bold ${Math.min(24, w * 0.035)}px monospace`;
+    ctx.font = `bold ${Math.min(22, w * 0.03)}px monospace`;
     ctx.shadowColor = '#00ff41';
-    ctx.shadowBlur = 10;
-    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.92);
+    ctx.shadowBlur = 12;
+    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.94);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
-    // Instructions (bottom, subtle)
-    ctx.fillStyle = '#335533';
-    ctx.font = `${Math.min(13, w * 0.017)}px monospace`;
-    const instructions = [
-        'SHOOT creeps | R = reload | P = POOP MODE | 90 sec',
-    ];
-    instructions.forEach((line, i) => {
-        ctx.fillText(line, w / 2, h * 0.97 + i * 18);
-    });
+    // Instructions
+    ctx.fillStyle = '#446644';
+    ctx.font = `${Math.min(12, w * 0.015)}px monospace`;
+    ctx.fillText('SHOOT creeps | R = reload | P = POOP MODE | 90 sec', w / 2, h * 0.98);
 
     drawCrosshair();
 }
