@@ -1661,8 +1661,8 @@ function drawMenu() {
     ctx.fillRect(deskX + deskW - 32, deskY + deskH, 12, h * 0.2);
 
     // === LAPTOP ===
-    const laptopW = Math.min(700, w * 0.6);
-    const laptopH = laptopW * 0.58;
+    const laptopW = Math.min(900, w * 0.82);
+    const laptopH = laptopW * 0.55;
     const laptopX = w / 2 - laptopW / 2;
     const laptopY = deskY - laptopH - 8;
 
