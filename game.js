@@ -1599,23 +1599,94 @@ function drawMenu() {
     const w = W(), h = H();
     const t = Date.now() / 1000;
 
-    // === BACKGROUND IMAGE ===
+    // === BACKGROUND — black fill first ===
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    // === BACKGROUND IMAGE (contain-fit: show entire image) ===
     if (menuBgLoaded) {
         const imgRatio = menuBgImage.width / menuBgImage.height;
         const canvasRatio = w / h;
         let dw, dh, dx, dy;
         if (canvasRatio > imgRatio) {
-            dw = w; dh = w / imgRatio; dx = 0; dy = (h - dh) / 2;
+            // Canvas wider than image — fit height, center horizontally
+            dh = h * 0.72; // zoom out: only use 72% of height
+            dw = dh * imgRatio;
+            dx = (w - dw) / 2;
+            dy = (h - dh) / 2;
         } else {
-            dh = h; dw = h * imgRatio; dx = (w - dw) / 2; dy = 0;
+            // Canvas taller — fit width, center vertically
+            dw = w * 0.88;
+            dh = dw / imgRatio;
+            dx = (w - dw) / 2;
+            dy = (h - dh) / 2;
         }
-        ctx.drawImage(menuBgImage, dx, dy, dw, dh);
-    } else {
-        ctx.fillStyle = '#0a0a12';
-        ctx.fillRect(0, 0, w, h);
-    }
 
-    // (wall texture removed — using image)
+        // Creepy jittery flicker — random brightness/offset glitches
+        const flickerRand = Math.random();
+        const isFlicker = flickerRand < 0.06; // 6% chance per frame
+        const isDarkFlicker = flickerRand < 0.02; // 2% chance full dark
+
+        if (isDarkFlicker) {
+            // Brief total blackout
+            ctx.globalAlpha = 0.05;
+        } else if (isFlicker) {
+            // Jittery offset + brightness spike
+            dx += (Math.random() - 0.5) * 8;
+            dy += (Math.random() - 0.5) * 6;
+            ctx.globalAlpha = 0.6 + Math.random() * 0.4;
+        }
+
+        ctx.drawImage(menuBgImage, dx, dy, dw, dh);
+        ctx.globalAlpha = 1;
+
+        // Gradient fade to black — TOP
+        const gradTop = ctx.createLinearGradient(0, dy - 10, 0, dy + dh * 0.18);
+        gradTop.addColorStop(0, 'rgba(0,0,0,1)');
+        gradTop.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradTop;
+        ctx.fillRect(0, 0, w, dy + dh * 0.25);
+
+        // Gradient fade to black — BOTTOM
+        const gradBot = ctx.createLinearGradient(0, dy + dh * 0.82, 0, dy + dh + 10);
+        gradBot.addColorStop(0, 'rgba(0,0,0,0)');
+        gradBot.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = gradBot;
+        ctx.fillRect(0, dy + dh * 0.75, w, h - dy - dh * 0.75);
+
+        // Gradient fade — LEFT
+        const gradLeft = ctx.createLinearGradient(dx - 5, 0, dx + dw * 0.08, 0);
+        gradLeft.addColorStop(0, 'rgba(0,0,0,1)');
+        gradLeft.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradLeft;
+        ctx.fillRect(0, 0, dx + dw * 0.1, h);
+
+        // Gradient fade — RIGHT
+        const gradRight = ctx.createLinearGradient(dx + dw * 0.92, 0, dx + dw + 5, 0);
+        gradRight.addColorStop(0, 'rgba(0,0,0,0)');
+        gradRight.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = gradRight;
+        ctx.fillRect(dx + dw * 0.9, 0, w - dx - dw * 0.9, h);
+
+        // Creepy scanline overlay
+        ctx.globalAlpha = 0.04;
+        for (let sy = 0; sy < h; sy += 3) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, sy, w, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // Occasional VHS tracking glitch bar
+        if (Math.random() < 0.03) {
+            const glitchY = Math.random() * h;
+            const glitchH = 2 + Math.random() * 8;
+            ctx.fillStyle = 'rgba(0,255,50,0.06)';
+            ctx.fillRect(0, glitchY, w, glitchH);
+            // Shift a strip of pixels
+            ctx.drawImage(canvas, 0, glitchY, w, glitchH,
+                         (Math.random() - 0.5) * 20, glitchY, w, glitchH);
+        }
+    }
 
     // === BAND-AID + LED on the laptop webcam in the image ===
     // Position relative to the image: the laptop screen top-center is roughly at 38% x, 18% y
@@ -1738,9 +1809,7 @@ function drawMenu() {
     const titleSize = Math.min(56, w * 0.065);
     ctx.font = `bold ${titleSize}px Arial Black, Arial`;
 
-    // Dark backdrop behind title for readability
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0, 0, w, h * 0.14);
+    // (title is over black gradient — no extra backdrop needed)
 
     // Glitch offset
     const glitch = Math.random() < 0.05;
@@ -1761,9 +1830,7 @@ function drawMenu() {
     ctx.font = `${Math.min(16, w * 0.022)}px monospace`;
     ctx.fillText('> initializing creep_hunt.exe ...', w / 2, h * 0.08 + 30);
 
-    // Bottom bar for UI elements
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, h * 0.85, w, h * 0.15);
+    // (bottom is already black from gradient)
 
     // High score
     if (highScore > 0) {
