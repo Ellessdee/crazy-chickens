@@ -169,30 +169,34 @@ function playGameOver() {
     });
 }
 
-// ---- Chicken types ----
-const chickenTypes = [
-    { size: 1.0, speed: 1.0, points: 10, color: '#d4520a', name: 'normal' },
-    { size: 0.7, speed: 1.6, points: 25, color: '#2288cc', name: 'fast' },
-    { size: 0.5, speed: 2.2, points: 50, color: '#cc22aa', name: 'tiny' },
-    { size: 1.4, speed: 0.6, points: 5, color: '#558822', name: 'fat' },
-    { size: 0.6, speed: 2.8, points: 75, color: '#ffaa00', name: 'golden' },
+// ---- Character types (Simpsons-style humans) ----
+const characterTypes = [
+    { size: 1.0, speed: 1.0, points: 10, skin: '#ffd800', shirt: '#cc4400', pants: '#3355aa', hair: '#000', name: 'normal' },
+    { size: 0.7, speed: 1.6, points: 25, skin: '#ffd800', shirt: '#dd2266', pants: '#884488', hair: '#0055cc', name: 'fast' },
+    { size: 0.5, speed: 2.2, points: 50, skin: '#ffd800', shirt: '#22aa44', pants: '#553322', hair: '#ffd800', name: 'tiny' },
+    { size: 1.4, speed: 0.6, points: 5, skin: '#ffd800', shirt: '#ffffff', pants: '#666666', hair: '#888', name: 'fat' },
+    { size: 0.6, speed: 2.8, points: 75, skin: '#ffd800', shirt: '#ffcc00', pants: '#ffaa00', hair: '#ff4400', name: 'golden' },
 ];
+const chickenTypes = characterTypes; // keep reference for compatibility
 
-// ---- Chicken class ----
+// ---- Character class (Simpsons-style) ----
 class Chicken {
     constructor() {
-        const type = chickenTypes[Math.random() < 0.05 ? 4 : Math.random() < 0.15 ? 2 : Math.random() < 0.35 ? 1 : Math.random() < 0.6 ? 0 : 3];
+        const type = characterTypes[Math.random() < 0.05 ? 4 : Math.random() < 0.15 ? 2 : Math.random() < 0.35 ? 1 : Math.random() < 0.6 ? 0 : 3];
         this.size = type.size;
         this.points = type.points;
-        this.color = type.color;
+        this.color = type.skin;
+        this.skin = type.skin;
+        this.shirt = type.shirt;
+        this.pants = type.pants;
+        this.hair = type.hair;
         this.name = type.name;
         const baseSize = 40 * this.size;
         this.w = baseSize * 2;
-        this.h = baseSize * 1.5;
+        this.h = baseSize * 2.5;
         this.dir = Math.random() < 0.5 ? 1 : -1;
         this.x = this.dir === 1 ? -this.w : W() + this.w;
-        // Upper portion of screen mostly
-        this.y = 40 + Math.random() * (H() * 0.55);
+        this.y = 40 + Math.random() * (H() * 0.50);
         this.speedX = (80 + Math.random() * 100) * type.speed * this.dir;
         this.speedY = Math.sin(Math.random() * Math.PI * 2) * 20;
         this.wobble = Math.random() * Math.PI * 2;
@@ -203,6 +207,10 @@ class Chicken {
         this.fallSpeed = 0;
         this.fallRotation = 0;
         this.opacity = 1;
+        // Unique features
+        this.hasBeard = Math.random() < 0.15;
+        this.mouthOpen = Math.random() < 0.3;
+        this.eyeStyle = Math.floor(Math.random() * 3); // 0=normal, 1=angry, 2=surprised
     }
 
     update(dt) {
@@ -242,95 +250,231 @@ class Chicken {
         ctx.scale(this.dir, 1);
 
         const s = this.size;
+        const outline = '#1a1a1a';
+        const lw = 2 * s;
+        const armSwing = Math.sin(this.wingAngle) * 0.4;
+        const legSwing = Math.sin(this.wingAngle * 0.6);
 
-        // Body
-        ctx.fillStyle = this.color;
+        // === LEGS (behind body) ===
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        // Pants / legs
+        for (let leg = -1; leg <= 1; leg += 2) {
+            const lx = leg * 8 * s;
+            const swing = legSwing * leg * 4 * s;
+            // Pant leg
+            ctx.fillStyle = this.pants;
+            ctx.beginPath();
+            ctx.roundRect(lx - 5 * s, 18 * s, 10 * s, 20 * s + swing, [0, 0, 2 * s, 2 * s]);
+            ctx.fill();
+            ctx.stroke();
+            // Shoe
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.ellipse(lx + 3 * s, 39 * s + swing, 8 * s, 4 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // === BODY / TORSO ===
+        // Shirt
+        ctx.fillStyle = this.shirt;
         ctx.beginPath();
-        ctx.ellipse(0, 0, 30 * s, 20 * s, 0, 0, Math.PI * 2);
+        ctx.roundRect(-18 * s, -8 * s, 36 * s, 30 * s, [4 * s, 4 * s, 2 * s, 2 * s]);
         ctx.fill();
-        ctx.strokeStyle = '#00000044';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
         ctx.stroke();
 
-        // Head
-        ctx.fillStyle = this.color;
+        // Collar
+        ctx.fillStyle = shadeColor(this.shirt, -30);
         ctx.beginPath();
-        ctx.arc(25 * s, -12 * s, 14 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        // Eye
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(30 * s, -15 * s, 5 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(32 * s, -15 * s, 2.5 * s, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Beak
-        ctx.fillStyle = '#ff8800';
-        ctx.beginPath();
-        ctx.moveTo(37 * s, -10 * s);
-        ctx.lineTo(48 * s, -8 * s);
-        ctx.lineTo(37 * s, -5 * s);
+        ctx.moveTo(-8 * s, -8 * s);
+        ctx.lineTo(0, -2 * s);
+        ctx.lineTo(8 * s, -8 * s);
         ctx.closePath();
         ctx.fill();
 
-        // Comb (red thing on head)
-        ctx.fillStyle = '#cc0000';
-        ctx.beginPath();
-        ctx.arc(22 * s, -25 * s, 5 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(27 * s, -24 * s, 4 * s, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Wattle
-        ctx.fillStyle = '#cc0000';
-        ctx.beginPath();
-        ctx.ellipse(30 * s, -2 * s, 3 * s, 5 * s, 0.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Wings
-        const wingFlap = Math.sin(this.wingAngle) * 0.5;
-        ctx.fillStyle = shadeColor(this.color, -20);
-        ctx.save();
-        ctx.translate(-5 * s, -5 * s);
-        ctx.rotate(wingFlap - 0.3);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 12 * s, 22 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-
-        // Tail feathers
-        ctx.fillStyle = shadeColor(this.color, -30);
-        for (let i = -1; i <= 1; i++) {
+        // === ARMS ===
+        ctx.lineWidth = lw;
+        for (let arm = -1; arm <= 1; arm += 2) {
             ctx.save();
-            ctx.translate(-30 * s, i * 5 * s);
-            ctx.rotate(-0.3 + i * 0.15);
+            ctx.translate(arm * 18 * s, 0);
+            ctx.rotate(armSwing * arm * 0.6);
+            // Upper arm (shirt color)
+            ctx.fillStyle = this.shirt;
             ctx.beginPath();
-            ctx.ellipse(0, 0, 15 * s, 4 * s, 0, 0, Math.PI * 2);
+            ctx.roundRect(-4 * s, -4 * s, 8 * s, 18 * s, 3 * s);
             ctx.fill();
+            ctx.strokeStyle = outline;
+            ctx.stroke();
+            // Hand (skin)
+            ctx.fillStyle = this.skin;
+            ctx.beginPath();
+            ctx.arc(0, 18 * s, 5 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = outline;
+            ctx.stroke();
             ctx.restore();
         }
 
-        // Feet
-        ctx.strokeStyle = '#ff8800';
-        ctx.lineWidth = 2 * s;
-        ctx.lineCap = 'round';
-        for (let f = -1; f <= 1; f += 2) {
-            const footX = 5 * s * f;
-            const legDangle = Math.sin(this.wingAngle * 0.5 + f) * 3;
+        // === NECK ===
+        ctx.fillStyle = this.skin;
+        ctx.fillRect(-5 * s, -15 * s, 10 * s, 10 * s);
+
+        // === HEAD ===
+        // Simpsons: big round yellow head, overbite
+        ctx.fillStyle = this.skin;
+        ctx.beginPath();
+        ctx.ellipse(0, -30 * s, 18 * s, 20 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        ctx.stroke();
+
+        // === HAIR ===
+        ctx.fillStyle = this.hair;
+        if (this.name === 'tiny') {
+            // Spiky hair (like Bart)
+            for (let spike = -2; spike <= 2; spike++) {
+                ctx.beginPath();
+                ctx.moveTo((spike * 6 - 3) * s, -45 * s);
+                ctx.lineTo(spike * 6 * s, -58 * s);
+                ctx.lineTo((spike * 6 + 3) * s, -45 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        } else if (this.name === 'fat') {
+            // Few hairs (like Homer)
+            ctx.strokeStyle = this.hair;
+            ctx.lineWidth = 2 * s;
+            for (let h = -1; h <= 1; h++) {
+                ctx.beginPath();
+                ctx.moveTo(h * 5 * s, -48 * s);
+                ctx.quadraticCurveTo(h * 3 * s, -56 * s, h * 7 * s, -54 * s);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = outline;
+        } else {
+            // Normal hair (poofy top)
             ctx.beginPath();
-            ctx.moveTo(footX, 15 * s);
-            ctx.lineTo(footX, 25 * s + legDangle);
-            ctx.lineTo(footX + 6 * s, 28 * s + legDangle);
-            ctx.moveTo(footX, 25 * s + legDangle);
-            ctx.lineTo(footX - 4 * s, 28 * s + legDangle);
+            ctx.ellipse(0, -46 * s, 16 * s, 8 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = outline;
+            ctx.lineWidth = lw;
+            ctx.stroke();
+            // Side hair
+            ctx.beginPath();
+            ctx.ellipse(-14 * s, -35 * s, 6 * s, 12 * s, 0.2, 0, Math.PI * 2);
+            ctx.fill();
             ctx.stroke();
         }
+
+        // === EYES (Simpsons: big white, bulging) ===
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        // Two big overlapping circles
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.ellipse(-5 * s, -33 * s, 8 * s, 9 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(7 * s, -33 * s, 8 * s, 9 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Pupils
+        ctx.fillStyle = '#000';
+        const pupilOff = this.eyeStyle === 2 ? -2 * s : 2 * s;
+        ctx.beginPath();
+        ctx.arc(-3 * s + pupilOff, -33 * s, 3 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(9 * s + pupilOff, -33 * s, 3 * s, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyebrows
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = 2.5 * s;
+        if (this.eyeStyle === 1) {
+            // Angry brows
+            ctx.beginPath();
+            ctx.moveTo(-12 * s, -44 * s);
+            ctx.lineTo(-1 * s, -41 * s);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(2 * s, -41 * s);
+            ctx.lineTo(14 * s, -44 * s);
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(-12 * s, -42 * s);
+            ctx.lineTo(-1 * s, -43 * s);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(2 * s, -43 * s);
+            ctx.lineTo(14 * s, -42 * s);
+            ctx.stroke();
+        }
+
+        // === NOSE ===
+        ctx.fillStyle = this.skin;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.ellipse(14 * s, -28 * s, 5 * s, 4 * s, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // === MOUTH (Simpsons overbite) ===
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        if (this.mouthOpen) {
+            // Open mouth
+            ctx.fillStyle = '#8B0000';
+            ctx.beginPath();
+            ctx.ellipse(8 * s, -20 * s, 8 * s, 5 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Teeth
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(2 * s, -23 * s, 12 * s, 3 * s);
+            ctx.strokeRect(2 * s, -23 * s, 12 * s, 3 * s);
+        } else {
+            // Overbite line
+            ctx.beginPath();
+            ctx.moveTo(4 * s, -20 * s);
+            ctx.quadraticCurveTo(12 * s, -16 * s, 18 * s, -20 * s);
+            ctx.stroke();
+            // Upper lip bump
+            ctx.fillStyle = this.skin;
+            ctx.beginPath();
+            ctx.ellipse(12 * s, -21 * s, 6 * s, 3 * s, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = outline;
+            ctx.stroke();
+        }
+
+        // === BEARD (optional) ===
+        if (this.hasBeard) {
+            ctx.fillStyle = '#555';
+            ctx.globalAlpha *= 0.4;
+            ctx.beginPath();
+            ctx.ellipse(5 * s, -16 * s, 14 * s, 8 * s, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.globalAlpha = Math.max(0, this.opacity);
+        }
+
+        // === EAR ===
+        ctx.fillStyle = this.skin;
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.ellipse(-16 * s, -30 * s, 4 * s, 6 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
 
         ctx.restore();
     }
@@ -1270,20 +1414,20 @@ function drawMenu() {
     const glitch = Math.random() < 0.05;
     if (glitch) {
         ctx.fillStyle = '#ff0040';
-        ctx.fillText('CRAZY CHICKENS', w / 2 + 3, h * 0.18 - 2);
+        ctx.fillText('CRAZY HUMANS', w / 2 + 3, h * 0.18 - 2);
         ctx.fillStyle = '#00ffaa';
-        ctx.fillText('CRAZY CHICKENS', w / 2 - 3, h * 0.18 + 2);
+        ctx.fillText('CRAZY HUMANS', w / 2 - 3, h * 0.18 + 2);
     }
     ctx.fillStyle = '#00ff41';
     ctx.shadowColor = '#00ff41';
     ctx.shadowBlur = 15;
-    ctx.fillText('CRAZY CHICKENS', w / 2, h * 0.18);
+    ctx.fillText('CRAZY HUMANS', w / 2, h * 0.18);
     ctx.shadowBlur = 0;
 
     // Subtitle
     ctx.fillStyle = '#4a8a4a';
     ctx.font = `${Math.min(18, w * 0.025)}px monospace`;
-    ctx.fillText('> initializing chicken_hunt.exe ...', w / 2, h * 0.18 + 35);
+    ctx.fillText('> initializing human_hunt.exe ...', w / 2, h * 0.18 + 35);
 
     // High score
     if (highScore > 0) {
@@ -1307,7 +1451,7 @@ function drawMenu() {
     ctx.fillStyle = '#335533';
     ctx.font = `${Math.min(13, w * 0.017)}px monospace`;
     const instructions = [
-        'SHOOT chickens | R = reload | P = POOP MODE | 90 sec',
+        'SHOOT humans | R = reload | P = POOP MODE | 90 sec',
     ];
     instructions.forEach((line, i) => {
         ctx.fillText(line, w / 2, h * 0.97 + i * 18);
