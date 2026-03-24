@@ -176,16 +176,22 @@ function playGameOver() {
 }
 
 // ---- Character types (Simpsons-style humans) ----
+// ---- Creepy character types (horror comic style) ----
 const characterTypes = [
-    { size: 1.0, speed: 1.0, points: 10, skin: '#ffd90f', shirt: '#ba4a00', pants: '#2855a0', hair: '#1a1a1a', shirtDetail: '#993d00', name: 'normal' },
-    { size: 0.7, speed: 1.6, points: 25, skin: '#ffd90f', shirt: '#c0275e', pants: '#6a3570', hair: '#2244aa', shirtDetail: '#a02050', name: 'fast' },
-    { size: 0.5, speed: 2.2, points: 50, skin: '#ffd90f', shirt: '#e8651a', pants: '#3377cc', hair: '#ffd90f', shirtDetail: '#cc5510', name: 'tiny' },
-    { size: 1.4, speed: 0.6, points: 5, skin: '#ffd90f', shirt: '#f0f0f0', pants: '#555555', hair: '#776633', shirtDetail: '#ddd', name: 'fat' },
-    { size: 0.6, speed: 2.8, points: 75, skin: '#ffd90f', shirt: '#cc0000', pants: '#1a1a1a', hair: '#cc2200', shirtDetail: '#aa0000', name: 'golden' },
+    { size: 1.0, speed: 1.0, points: 10, skin: '#c8b8a0', shirt: '#3a3a3a', pants: '#2a2a2a', hair: '#1a1a1a', shirtDetail: '#2a2a2a', name: 'ghoul',
+      eyeColor: '#ccff00', scarred: false, fangs: true, hunched: false },
+    { size: 0.7, speed: 1.8, points: 25, skin: '#8899aa', shirt: '#442244', pants: '#1a1a2a', hair: '#0a0a0a', shirtDetail: '#331133', name: 'vampire',
+      eyeColor: '#ff0000', scarred: false, fangs: true, hunched: false },
+    { size: 0.5, speed: 2.4, points: 50, skin: '#88aa77', shirt: '#444433', pants: '#333322', hair: '#2a3a1a', shirtDetail: '#333322', name: 'goblin',
+      eyeColor: '#ffff00', scarred: true, fangs: false, hunched: true },
+    { size: 1.5, speed: 0.5, points: 5, skin: '#99aa88', shirt: '#555544', pants: '#444433', hair: '#3a3a2a', shirtDetail: '#444433', name: 'frankenstein',
+      eyeColor: '#aaffaa', scarred: true, fangs: false, hunched: false },
+    { size: 0.6, speed: 2.8, points: 75, skin: '#ddccbb', shirt: '#880000', pants: '#1a1a1a', hair: '#aa0000', shirtDetail: '#660000', name: 'demon',
+      eyeColor: '#ff4400', scarred: false, fangs: true, hunched: false },
 ];
 const chickenTypes = characterTypes;
 
-// ---- Character class (Simpsons-style) ----
+// ---- Character class (Creepy Horror Comic style) ----
 class Chicken {
     constructor() {
         const type = characterTypes[Math.random() < 0.05 ? 4 : Math.random() < 0.15 ? 2 : Math.random() < 0.35 ? 1 : Math.random() < 0.6 ? 0 : 3];
@@ -198,6 +204,10 @@ class Chicken {
         this.pants = type.pants;
         this.hair = type.hair;
         this.name = type.name;
+        this.eyeColor = type.eyeColor;
+        this.hasFangs = type.fangs;
+        this.isScarred = type.scarred;
+        this.isHunched = type.hunched;
         const baseSize = 40 * this.size;
         this.w = baseSize * 2;
         this.h = baseSize * 2.8;
@@ -210,8 +220,6 @@ class Chicken {
         this.walkCycle = Math.random() * Math.PI * 2;
         this.walkSpeed = 6 + Math.random() * 4;
         this.alive = true;
-
-        // Ragdoll death physics
         this.fallSpeedY = 0;
         this.fallSpeedX = 0;
         this.fallRotation = 0;
@@ -219,19 +227,29 @@ class Chicken {
         this.bounceCount = 0;
         this.opacity = 1;
 
-        // Personality — mostly unhappy
-        this.hasBeard = Math.random() < 0.2;
-        this.has5oClock = !this.hasBeard && Math.random() < 0.25;
-        this.wrinkles = Math.random() < 0.3;
-        this.baggyEyes = Math.random() < 0.4;
-        this.sweatDrop = Math.random() < 0.2;
-        // Expressions: 0=grumpy, 1=angry, 2=disgusted, 3=worried, 4=dead-inside
-        this.expression = Math.floor(Math.random() * 5);
-        // Mouth: 0=frown, 1=grimace, 2=yelling, 3=crooked
-        this.mouthType = Math.floor(Math.random() * 4);
-        // Hair variations
-        this.baldSpot = this.name === 'fat' || Math.random() < 0.15;
-        this.combOver = this.baldSpot && Math.random() < 0.5;
+        // Creepy features
+        this.jawSize = 0.8 + Math.random() * 0.6; // some have huge jaws
+        this.eyeSizeL = 0.8 + Math.random() * 0.7;
+        this.eyeSizeR = 0.8 + Math.random() * 0.7; // asymmetric eyes
+        this.browAngle = Math.random() * 0.4 - 0.1;
+        this.noseLen = 0.6 + Math.random() * 0.8;
+        this.hasWarts = Math.random() < 0.3;
+        this.hasDrool = Math.random() < 0.25;
+        this.missingTeeth = Math.floor(Math.random() * 3);
+        this.scars = [];
+        if (this.isScarred || Math.random() < 0.2) {
+            const numScars = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numScars; i++) {
+                this.scars.push({
+                    x: (Math.random() - 0.5) * 20,
+                    y: -35 + Math.random() * 15,
+                    len: 5 + Math.random() * 10,
+                    angle: Math.random() * Math.PI
+                });
+            }
+        }
+        this.twitchTimer = 0;
+        this.twitchOffset = 0;
     }
 
     update(dt) {
@@ -240,29 +258,27 @@ class Chicken {
             this.wobble += this.wobbleSpeed * dt;
             this.y += Math.sin(this.wobble) * 20 * dt;
             this.walkCycle += this.walkSpeed * dt;
+            // Random head twitch
+            this.twitchTimer -= dt;
+            if (this.twitchTimer <= 0) {
+                this.twitchOffset = (Math.random() - 0.5) * 0.15;
+                this.twitchTimer = 0.3 + Math.random() * 1.5;
+            }
         } else {
-            // Ragdoll physics
-            this.fallSpeedY += 800 * dt; // strong gravity
+            this.fallSpeedY += 800 * dt;
             this.x += this.fallSpeedX * dt;
             this.y += this.fallSpeedY * dt;
             this.fallRotation += this.rotVelocity * dt;
-            // Air drag on rotation
             this.rotVelocity *= (1 - 0.8 * dt);
             this.fallSpeedX *= (1 - 0.5 * dt);
-
-            // Bounce off bottom
             if (this.y > H() - 60 && this.bounceCount < 3) {
                 this.y = H() - 60;
-                this.fallSpeedY *= -0.4; // energy loss on bounce
+                this.fallSpeedY *= -0.4;
                 this.fallSpeedX *= 0.7;
                 this.rotVelocity += (Math.random() - 0.5) * 8;
                 this.bounceCount++;
             }
-
-            // Fade after bouncing
-            if (this.bounceCount >= 2) {
-                this.opacity -= 0.8 * dt;
-            }
+            if (this.bounceCount >= 2) this.opacity -= 0.8 * dt;
         }
     }
 
@@ -271,9 +287,6 @@ class Chicken {
         this.fallSpeedY = -200 - Math.random() * 150;
         this.fallSpeedX = (Math.random() - 0.5) * 200;
         this.rotVelocity = (Math.random() - 0.5) * 12;
-        // Switch to death expression
-        this.expression = 5; // dead
-        this.mouthType = 2; // scream
     }
 
     isOffScreen() {
@@ -299,16 +312,17 @@ class Chicken {
         ctx.scale(this.dir, 1);
 
         const s = this.size;
-        const OL = '#1a1a1a'; // outline color
+        const OL = '#111';
         const lw = 2.2 * s;
         const walk = this.alive ? Math.sin(this.walkCycle) : 0;
         const walk2 = this.alive ? Math.cos(this.walkCycle) : 0;
+        const hunch = this.isHunched ? 0.2 : 0;
 
-        // === SHADOW (when alive) ===
+        // Shadow
         if (this.alive) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.beginPath();
-            ctx.ellipse(0, 44 * s, 20 * s, 5 * s, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 44 * s, 22 * s, 5 * s, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -320,144 +334,127 @@ class Chicken {
             ctx.translate(lx, 20 * s);
             ctx.rotate(legAngle);
 
-            // Upper leg (pants)
             ctx.fillStyle = this.pants;
             ctx.strokeStyle = OL;
             ctx.lineWidth = lw;
             ctx.beginPath();
-            ctx.roundRect(-5.5 * s, 0, 11 * s, 14 * s, 2 * s);
+            ctx.roundRect(-5.5 * s, 0, 11 * s, 22 * s, 2 * s);
             ctx.fill();
             ctx.stroke();
 
-            // Lower leg (pants)
-            ctx.fillStyle = shadeColor(this.pants, -15);
+            // Worn boots
+            ctx.fillStyle = '#1a1510';
             ctx.beginPath();
-            ctx.roundRect(-5 * s, 12 * s, 10 * s, 10 * s, [0, 0, 2 * s, 2 * s]);
-            ctx.fill();
-            ctx.stroke();
-
-            // Shoe — detailed
-            ctx.fillStyle = '#2a2218';
-            ctx.beginPath();
-            ctx.moveTo(-5 * s, 21 * s);
-            ctx.lineTo(10 * s, 21 * s);
-            ctx.quadraticCurveTo(14 * s, 21 * s, 14 * s, 24 * s);
-            ctx.lineTo(14 * s, 26 * s);
-            ctx.quadraticCurveTo(14 * s, 28 * s, 10 * s, 28 * s);
-            ctx.lineTo(-5 * s, 28 * s);
-            ctx.quadraticCurveTo(-7 * s, 28 * s, -7 * s, 25 * s);
+            ctx.moveTo(-6 * s, 20 * s);
+            ctx.lineTo(12 * s, 20 * s);
+            ctx.quadraticCurveTo(15 * s, 20 * s, 15 * s, 24 * s);
+            ctx.lineTo(15 * s, 27 * s);
+            ctx.lineTo(-7 * s, 27 * s);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-            // Shoe sole
-            ctx.fillStyle = '#111';
-            ctx.fillRect(-6 * s, 26 * s, 20 * s, 2.5 * s);
-            // Shoe lace
-            ctx.strokeStyle = '#555';
-            ctx.lineWidth = 1 * s;
+            // Boot scuff marks
+            ctx.strokeStyle = '#2a2520';
+            ctx.lineWidth = 0.5 * s;
             ctx.beginPath();
-            ctx.moveTo(0, 22 * s);
-            ctx.lineTo(4 * s, 22 * s);
+            ctx.moveTo(2 * s, 22 * s);
+            ctx.lineTo(8 * s, 23 * s);
             ctx.stroke();
 
             ctx.restore();
         }
 
-        // === TORSO ===
+        // === TORSO (hunched posture for some) ===
+        ctx.save();
+        ctx.rotate(hunch);
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
 
-        // Belly (slightly rounded for fat type)
-        const bellyExtra = this.name === 'fat' ? 6 : 0;
+        // Torso — ragged shirt
         ctx.fillStyle = this.shirt;
         ctx.beginPath();
-        ctx.moveTo(-16 * s, -10 * s);
-        ctx.lineTo(-16 * s, 22 * s);
-        ctx.lineTo(16 * s, 22 * s);
-        ctx.lineTo(16 * s, -10 * s);
-        // Belly bulge
-        ctx.quadraticCurveTo((8 + bellyExtra) * s, -(12 + bellyExtra * 0.5) * s, -16 * s, -10 * s);
+        ctx.moveTo(-17 * s, -10 * s);
+        ctx.lineTo(-17 * s, 22 * s);
+        ctx.lineTo(17 * s, 22 * s);
+        ctx.lineTo(17 * s, -10 * s);
+        ctx.quadraticCurveTo(0, -14 * s, -17 * s, -10 * s);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Shirt wrinkles / fold lines
+        // Shirt wrinkles / creases (dark)
         ctx.strokeStyle = this.shirtDetail;
         ctx.lineWidth = 1 * s;
         ctx.beginPath();
-        ctx.moveTo(-6 * s, 2 * s);
-        ctx.quadraticCurveTo(-2 * s, 5 * s, -8 * s, 10 * s);
+        ctx.moveTo(-8 * s, 0);
+        ctx.quadraticCurveTo(-4 * s, 6 * s, -10 * s, 14 * s);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(8 * s, 0);
-        ctx.quadraticCurveTo(6 * s, 6 * s, 10 * s, 12 * s);
+        ctx.moveTo(6 * s, 2 * s);
+        ctx.quadraticCurveTo(10 * s, 8 * s, 5 * s, 16 * s);
         ctx.stroke();
 
-        // Belt
-        ctx.fillStyle = '#3a2a18';
+        // Torn edges at bottom
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        ctx.fillRect(-16 * s, 17 * s, 32 * s, 4 * s);
-        ctx.strokeRect(-16 * s, 17 * s, 32 * s, 4 * s);
-        // Belt buckle
-        ctx.fillStyle = '#b8960f';
-        ctx.fillRect(-2 * s, 17.5 * s, 4 * s, 3 * s);
-        ctx.strokeStyle = '#8a7008';
-        ctx.lineWidth = 1 * s;
-        ctx.strokeRect(-2 * s, 17.5 * s, 4 * s, 3 * s);
-
-        // Collar / neckline
-        ctx.fillStyle = shadeColor(this.shirt, -25);
-        ctx.strokeStyle = OL;
-        ctx.lineWidth = lw;
-        ctx.beginPath();
-        ctx.moveTo(-10 * s, -10 * s);
-        ctx.quadraticCurveTo(-4 * s, -5 * s, 0, -3 * s);
-        ctx.quadraticCurveTo(4 * s, -5 * s, 10 * s, -10 * s);
-        ctx.lineTo(8 * s, -10 * s);
-        ctx.quadraticCurveTo(0, -1 * s, -8 * s, -10 * s);
-        ctx.closePath();
-        ctx.fill();
+        if (this.name === 'ghoul' || this.name === 'frankenstein') {
+            ctx.beginPath();
+            for (let tx = -16; tx < 16; tx += 4) {
+                ctx.lineTo(tx * s, (22 + Math.random() * 3) * s);
+            }
+            ctx.stroke();
+        }
 
         // === ARMS ===
         for (let arm = -1; arm <= 1; arm += 2) {
-            const armAngle = walk2 * arm * 0.35;
+            const armAngle = walk2 * arm * 0.3;
             ctx.save();
-            ctx.translate(arm * 16 * s, -4 * s);
-            ctx.rotate(armAngle + (arm === -1 ? -0.1 : 0.1));
+            ctx.translate(arm * 17 * s, -2 * s);
+            ctx.rotate(armAngle + (arm === -1 ? -0.15 : 0.15));
 
             // Sleeve
             ctx.fillStyle = this.shirt;
             ctx.strokeStyle = OL;
             ctx.lineWidth = lw;
             ctx.beginPath();
-            ctx.roundRect(-5 * s, -2 * s, 10 * s, 14 * s, 3 * s);
+            ctx.roundRect(-5 * s, -2 * s, 10 * s, 13 * s, 2 * s);
             ctx.fill();
             ctx.stroke();
 
-            // Forearm (skin)
+            // Bony forearm
             ctx.fillStyle = this.skin;
             ctx.beginPath();
-            ctx.roundRect(-4 * s, 10 * s, 8 * s, 12 * s, 2 * s);
+            ctx.roundRect(-3.5 * s, 9 * s, 7 * s, 13 * s, 2 * s);
             ctx.fill();
+            ctx.stroke();
+            // Veins
+            ctx.strokeStyle = shadeColor(this.skin, -25);
+            ctx.lineWidth = 0.6 * s;
+            ctx.beginPath();
+            ctx.moveTo(-1 * s, 10 * s);
+            ctx.quadraticCurveTo(1 * s, 16 * s, -1 * s, 20 * s);
             ctx.stroke();
 
-            // Hand with fingers (Simpsons 4 fingers)
+            // Claw-like hand
             ctx.fillStyle = this.skin;
+            ctx.strokeStyle = OL;
+            ctx.lineWidth = lw;
             ctx.beginPath();
-            ctx.arc(0, 24 * s, 5 * s, 0, Math.PI * 2);
+            ctx.arc(0, 24 * s, 4.5 * s, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            // Finger lines
-            ctx.strokeStyle = shadeColor(this.skin, -40);
-            ctx.lineWidth = 0.8 * s;
-            for (let f = 0; f < 3; f++) {
-                const fa = -0.6 + f * 0.4;
+            // Long fingers/claws
+            ctx.strokeStyle = shadeColor(this.skin, -15);
+            ctx.lineWidth = 1.5 * s;
+            ctx.lineCap = 'round';
+            for (let f = -1; f <= 1; f++) {
+                const fa = 0.5 + f * 0.5;
                 ctx.beginPath();
-                ctx.moveTo(Math.cos(fa) * 3 * s, 24 * s + Math.sin(fa) * 3 * s);
-                ctx.lineTo(Math.cos(fa) * 7 * s, 24 * s + Math.sin(fa) * 7 * s);
+                ctx.moveTo(Math.cos(fa) * 4 * s, 24 * s + Math.sin(fa) * 4 * s);
+                ctx.lineTo(Math.cos(fa) * 9 * s, 24 * s + Math.sin(fa) * 9 * s);
                 ctx.stroke();
             }
+            ctx.lineCap = 'butt';
 
             ctx.restore();
         }
@@ -466,199 +463,204 @@ class Chicken {
         ctx.fillStyle = this.skin;
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        ctx.fillRect(-6 * s, -18 * s, 12 * s, 10 * s);
-        // Neck lines
-        ctx.strokeStyle = shadeColor(this.skin, -30);
-        ctx.lineWidth = 0.8 * s;
+        ctx.fillRect(-5 * s, -18 * s, 10 * s, 10 * s);
+        // Neck tendons
+        ctx.strokeStyle = shadeColor(this.skin, -20);
+        ctx.lineWidth = 0.7 * s;
         ctx.beginPath();
-        ctx.moveTo(-3 * s, -14 * s);
-        ctx.lineTo(-2 * s, -10 * s);
+        ctx.moveTo(-3 * s, -15 * s);
+        ctx.lineTo(-3 * s, -9 * s);
+        ctx.moveTo(3 * s, -15 * s);
+        ctx.lineTo(3 * s, -9 * s);
         ctx.stroke();
 
-        // Adam's apple
-        ctx.fillStyle = shadeColor(this.skin, -10);
-        ctx.beginPath();
-        ctx.ellipse(2 * s, -13 * s, 2 * s, 3 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.restore(); // end hunch
 
         // === HEAD ===
+        ctx.save();
+        if (this.alive) ctx.rotate(this.twitchOffset); // creepy twitch
+
+        // Head shape — gaunt, angular
         ctx.fillStyle = this.skin;
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        // Simpsons head: cylindrical top, jaw protrusion
         ctx.beginPath();
-        ctx.moveTo(-17 * s, -25 * s);
-        ctx.quadraticCurveTo(-18 * s, -50 * s, -10 * s, -52 * s);
-        ctx.lineTo(10 * s, -52 * s);
-        ctx.quadraticCurveTo(18 * s, -50 * s, 18 * s, -35 * s);
-        // Jaw juts forward (overbite)
-        ctx.quadraticCurveTo(19 * s, -25 * s, 22 * s, -22 * s);
-        ctx.quadraticCurveTo(24 * s, -18 * s, 20 * s, -16 * s);
-        // Chin
-        ctx.quadraticCurveTo(14 * s, -14 * s, 8 * s, -16 * s);
-        // Under chin
-        ctx.quadraticCurveTo(0, -14 * s, -10 * s, -18 * s);
-        ctx.quadraticCurveTo(-16 * s, -20 * s, -17 * s, -25 * s);
+        ctx.moveTo(-16 * s, -24 * s);
+        ctx.quadraticCurveTo(-18 * s, -48 * s, -8 * s, -54 * s);
+        ctx.lineTo(8 * s, -54 * s);
+        ctx.quadraticCurveTo(18 * s, -48 * s, 17 * s, -32 * s);
+        // Cheekbone protrusion
+        ctx.quadraticCurveTo(20 * s, -28 * s, 18 * s, -24 * s);
+        // Gaunt jaw
+        ctx.quadraticCurveTo(22 * s * this.jawSize, -18 * s, 16 * s * this.jawSize, -14 * s);
+        ctx.quadraticCurveTo(10 * s, -12 * s, 4 * s, -14 * s);
+        ctx.quadraticCurveTo(-4 * s, -12 * s, -12 * s, -16 * s);
+        ctx.quadraticCurveTo(-17 * s, -20 * s, -16 * s, -24 * s);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // === EAR ===
-        ctx.fillStyle = this.skin;
+        // Cheekbone shadow
+        ctx.fillStyle = shadeColor(this.skin, -20);
         ctx.beginPath();
-        ctx.ellipse(-17 * s, -32 * s, 5 * s, 7 * s, -0.1, 0, Math.PI * 2);
+        ctx.ellipse(12 * s, -26 * s, 5 * s, 8 * s, 0.3, 0, Math.PI * 2);
         ctx.fill();
-        ctx.stroke();
-        // Inner ear
-        ctx.strokeStyle = shadeColor(this.skin, -30);
-        ctx.lineWidth = 1 * s;
+        // Hollow cheek
         ctx.beginPath();
-        ctx.arc(-17 * s, -32 * s, 3 * s, 0.5, Math.PI * 1.5);
-        ctx.stroke();
+        ctx.ellipse(-8 * s, -24 * s, 4 * s, 6 * s, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // === EAR (pointed for some) ===
+        ctx.fillStyle = this.skin;
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        if (this.name === 'vampire' || this.name === 'goblin') {
+            // Pointed ear
+            ctx.beginPath();
+            ctx.moveTo(-16 * s, -28 * s);
+            ctx.lineTo(-24 * s, -42 * s);
+            ctx.lineTo(-16 * s, -36 * s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            ctx.beginPath();
+            ctx.ellipse(-17 * s, -32 * s, 4 * s, 6 * s, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
 
         // === HAIR ===
         ctx.fillStyle = this.hair;
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        if (this.name === 'tiny') {
-            // Bart-style spikes — 9 pointy spikes
+        if (this.name === 'frankenstein') {
+            // Flat-top Frankenstein hair
+            ctx.fillRect(-14 * s, -56 * s, 28 * s, 8 * s);
+            ctx.strokeRect(-14 * s, -56 * s, 28 * s, 8 * s);
+            // Bolts on neck
+            ctx.fillStyle = '#888';
             ctx.beginPath();
-            ctx.moveTo(-12 * s, -48 * s);
-            const spikes = 9;
-            for (let i = 0; i < spikes; i++) {
-                const sx = -12 * s + (i / (spikes - 1)) * 24 * s;
-                const tipX = sx + (Math.random() - 0.3) * 2 * s;
-                ctx.lineTo(tipX, -62 * s - Math.random() * 4 * s);
-                if (i < spikes - 1) {
-                    ctx.lineTo(sx + 12 * s / (spikes - 1), -48 * s);
-                }
-            }
-            ctx.lineTo(12 * s, -48 * s);
+            ctx.ellipse(-18 * s, -18 * s, 4 * s, 3 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(18 * s, -18 * s, 4 * s, 3 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        } else if (this.name === 'vampire') {
+            // Slicked back widow's peak
+            ctx.beginPath();
+            ctx.moveTo(-16 * s, -36 * s);
+            ctx.quadraticCurveTo(-14 * s, -56 * s, 0, -58 * s);
+            ctx.quadraticCurveTo(14 * s, -56 * s, 16 * s, -36 * s);
+            ctx.lineTo(16 * s, -42 * s);
+            ctx.quadraticCurveTo(0, -50 * s, -16 * s, -42 * s);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-        } else if (this.baldSpot) {
-            // Homer-style: bald dome, fringe around sides
-            // Side fringe
+            // Widow's peak
+            ctx.beginPath();
+            ctx.moveTo(-4 * s, -50 * s);
+            ctx.lineTo(0, -56 * s);
+            ctx.lineTo(4 * s, -50 * s);
+            ctx.closePath();
+            ctx.fill();
+        } else if (this.name === 'goblin') {
+            // Patchy tufts
             ctx.fillStyle = this.hair;
+            for (let tuft = 0; tuft < 4; tuft++) {
+                const tx = -8 + tuft * 5;
+                ctx.beginPath();
+                ctx.moveTo((tx - 2) * s, -50 * s);
+                ctx.lineTo(tx * s, -58 * s - Math.random() * 6 * s);
+                ctx.lineTo((tx + 2) * s, -50 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        } else if (this.name === 'demon') {
+            // Wild flaming hair
             ctx.beginPath();
-            ctx.moveTo(-18 * s, -28 * s);
-            ctx.quadraticCurveTo(-20 * s, -35 * s, -18 * s, -40 * s);
-            ctx.lineTo(-14 * s, -40 * s);
-            ctx.quadraticCurveTo(-16 * s, -33 * s, -16 * s, -28 * s);
+            ctx.moveTo(-14 * s, -40 * s);
+            for (let spike = 0; spike < 7; spike++) {
+                const sx = -12 + spike * 4;
+                ctx.quadraticCurveTo(sx * s, -62 * s - Math.sin(spike * 2) * 5 * s,
+                                     (sx + 2) * s, -48 * s);
+            }
+            ctx.lineTo(14 * s, -40 * s);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-            // Combover strands
-            if (this.combOver) {
-                ctx.strokeStyle = this.hair;
-                ctx.lineWidth = 2 * s;
-                for (let h = 0; h < 3; h++) {
-                    ctx.beginPath();
-                    ctx.moveTo((-5 + h * 5) * s, -52 * s);
-                    ctx.quadraticCurveTo((-3 + h * 4) * s, -56 * s, (h * 6) * s, -54 * s);
-                    ctx.stroke();
-                }
-            } else {
-                // Single zig-zag hair strand
-                ctx.strokeStyle = this.hair;
-                ctx.lineWidth = 2.5 * s;
-                ctx.beginPath();
-                ctx.moveTo(-2 * s, -52 * s);
-                ctx.lineTo(0, -57 * s);
-                ctx.lineTo(3 * s, -53 * s);
-                ctx.stroke();
-            }
-            ctx.strokeStyle = OL;
-        } else if (this.name === 'fast') {
-            // Tall beehive / Marge-ish
-            ctx.beginPath();
-            ctx.roundRect(-10 * s, -76 * s, 20 * s, 30 * s, [8 * s, 8 * s, 2 * s, 2 * s]);
-            ctx.fill();
-            ctx.stroke();
-            // Base hair
-            ctx.beginPath();
-            ctx.ellipse(0, -48 * s, 16 * s, 6 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            // Hair lines
-            ctx.strokeStyle = shadeColor(this.hair, -30);
-            ctx.lineWidth = 1 * s;
-            for (let hl = 0; hl < 4; hl++) {
-                const hy = -72 * s + hl * 7 * s;
-                ctx.beginPath();
-                ctx.moveTo(-7 * s, hy);
-                ctx.quadraticCurveTo(0, hy - 2 * s, 7 * s, hy);
-                ctx.stroke();
-            }
         } else {
-            // Generic messy/unkempt hair
+            // Messy, stringy hair
             ctx.beginPath();
-            ctx.moveTo(-16 * s, -40 * s);
-            ctx.quadraticCurveTo(-14 * s, -56 * s, -4 * s, -56 * s);
-            ctx.quadraticCurveTo(4 * s, -58 * s, 10 * s, -54 * s);
-            ctx.quadraticCurveTo(16 * s, -52 * s, 16 * s, -42 * s);
-            ctx.quadraticCurveTo(17 * s, -36 * s, 16 * s, -32 * s);
-            ctx.lineTo(-16 * s, -32 * s);
+            ctx.moveTo(-16 * s, -38 * s);
+            ctx.quadraticCurveTo(-12 * s, -56 * s, 0, -54 * s);
+            ctx.quadraticCurveTo(12 * s, -56 * s, 16 * s, -38 * s);
+            ctx.lineTo(16 * s, -30 * s);
+            ctx.lineTo(-16 * s, -30 * s);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-            // Messy strands
-            ctx.strokeStyle = shadeColor(this.hair, -20);
-            ctx.lineWidth = 1.5 * s;
-            ctx.beginPath();
-            ctx.moveTo(-8 * s, -55 * s);
-            ctx.quadraticCurveTo(-12 * s, -60 * s, -6 * s, -62 * s);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(6 * s, -54 * s);
-            ctx.quadraticCurveTo(12 * s, -59 * s, 8 * s, -61 * s);
-            ctx.stroke();
+            // Stringy strands hanging
+            ctx.strokeStyle = shadeColor(this.hair, 15);
+            ctx.lineWidth = 1.2 * s;
+            for (let strand = 0; strand < 5; strand++) {
+                const sx = -10 + strand * 5;
+                ctx.beginPath();
+                ctx.moveTo(sx * s, -30 * s);
+                ctx.quadraticCurveTo((sx + 2) * s, -24 * s, (sx - 1) * s, -20 * s);
+                ctx.stroke();
+            }
         }
 
-        // === EYES — big Simpsons style ===
+        // === EYES — big, creepy, asymmetric ===
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        const eyeY = -35 * s;
+        const eyeY = -36 * s;
+        const isDead = !this.alive && this.bounceCount > 0;
 
-        // Eyeballs (big, white, protruding)
-        ctx.fillStyle = '#fff';
+        // Eye sockets (dark circles)
+        ctx.fillStyle = shadeColor(this.skin, -30);
         ctx.beginPath();
-        ctx.ellipse(-4 * s, eyeY, 9 * s, 10 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(-5 * s, eyeY, 10 * s * this.eyeSizeL, 10 * s * this.eyeSizeL, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(9 * s, eyeY, 10 * s * this.eyeSizeR, 10 * s * this.eyeSizeR, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyeballs
+        ctx.fillStyle = '#e8e0d0';
+        ctx.beginPath();
+        ctx.ellipse(-5 * s, eyeY, 8 * s * this.eyeSizeL, 9 * s * this.eyeSizeL, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(9 * s, eyeY, 9 * s, 10 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(9 * s, eyeY, 8 * s * this.eyeSizeR, 9 * s * this.eyeSizeR, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // Bloodshot lines (unhappy detail)
-        if (this.baggyEyes) {
-            ctx.strokeStyle = '#cc4444';
-            ctx.lineWidth = 0.5 * s;
-            ctx.globalAlpha *= 0.4;
-            for (let eye = 0; eye < 2; eye++) {
-                const ex = eye === 0 ? -4 * s : 9 * s;
-                for (let v = 0; v < 2; v++) {
-                    const a = -1.5 + v * 0.8;
-                    ctx.beginPath();
-                    ctx.moveTo(ex + Math.cos(a) * 5 * s, eyeY + Math.sin(a) * 5 * s);
-                    ctx.lineTo(ex + Math.cos(a) * 8 * s, eyeY + Math.sin(a) * 8 * s);
-                    ctx.stroke();
-                }
+        // Bloodshot veins
+        ctx.strokeStyle = '#882222';
+        ctx.lineWidth = 0.4 * s;
+        for (let eye = 0; eye < 2; eye++) {
+            const ex = eye === 0 ? -5 * s : 9 * s;
+            for (let v = 0; v < 3; v++) {
+                const a = -2 + v * 1.2;
+                ctx.beginPath();
+                ctx.moveTo(ex + Math.cos(a) * 3 * s, eyeY + Math.sin(a) * 3 * s);
+                ctx.lineTo(ex + Math.cos(a) * 7 * s, eyeY + Math.sin(a) * 7 * s);
+                ctx.stroke();
             }
-            ctx.globalAlpha = Math.max(0, this.opacity);
         }
 
-        // Pupils — looking forward with dead/angry stare
-        ctx.fillStyle = '#000';
-        const isDead = this.expression === 5;
         if (isDead) {
             // X eyes
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2 * s;
+            ctx.strokeStyle = '#600';
+            ctx.lineWidth = 2.5 * s;
             for (let eye = 0; eye < 2; eye++) {
-                const ex = eye === 0 ? -4 * s : 9 * s;
+                const ex = eye === 0 ? -5 * s : 9 * s;
                 ctx.beginPath();
                 ctx.moveTo(ex - 4 * s, eyeY - 4 * s);
                 ctx.lineTo(ex + 4 * s, eyeY + 4 * s);
@@ -667,245 +669,193 @@ class Chicken {
                 ctx.stroke();
             }
         } else {
-            const pupilSize = 3.5 * s;
-            const pupilX = 2 * s; // looking forward
+            // Glowing pupils
+            ctx.fillStyle = this.eyeColor;
+            ctx.shadowColor = this.eyeColor;
+            ctx.shadowBlur = 6 * s;
             ctx.beginPath();
-            ctx.arc(-4 * s + pupilX, eyeY, pupilSize, 0, Math.PI * 2);
+            ctx.arc(-4 * s, eyeY, 3.5 * s, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(9 * s + pupilX, eyeY, pupilSize, 0, Math.PI * 2);
+            ctx.arc(10 * s, eyeY, 3.5 * s, 0, Math.PI * 2);
             ctx.fill();
-            // Tiny highlight
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(-4 * s + pupilX - 1 * s, eyeY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(9 * s + pupilX - 1 * s, eyeY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
-            ctx.fill();
-        }
+            ctx.shadowBlur = 0;
 
-        // Eyelids (heavy, droopy — unhappy)
-        ctx.fillStyle = this.skin;
-        ctx.strokeStyle = OL;
-        ctx.lineWidth = lw;
-        const lidDroop = this.expression === 4 ? 0.45 : // dead inside
-                         this.expression === 0 ? 0.3 :  // grumpy
-                         this.expression === 2 ? 0.25 :  // disgusted
-                         this.expression === 3 ? 0.1 :   // worried
-                         isDead ? 0 : 0.35;              // angry or dead
-        if (lidDroop > 0 && !isDead) {
-            for (let eye = 0; eye < 2; eye++) {
-                const ex = eye === 0 ? -4 * s : 9 * s;
+            // Slit pupils (for vampires/demons)
+            if (this.name === 'vampire' || this.name === 'demon') {
+                ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.ellipse(ex, eyeY - 5 * s, 10 * s, 8 * s * lidDroop, 0, 0, Math.PI);
+                ctx.ellipse(-4 * s, eyeY, 1 * s, 4 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(10 * s, eyeY, 1 * s, 4 * s, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-4 * s, eyeY, 2 * s, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(10 * s, eyeY, 2 * s, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
 
-        // Eyebrows — thick, expressive
+        // Heavy brow ridge
         ctx.strokeStyle = OL;
-        ctx.lineWidth = 3.5 * s;
+        ctx.lineWidth = 3 * s;
         ctx.lineCap = 'round';
-        const browAnger = this.expression === 1 ? 6 :   // angry
-                          this.expression === 0 ? 3 :    // grumpy
-                          this.expression === 2 ? 4 :    // disgusted
-                          this.expression === 3 ? -3 :   // worried (raised)
-                          isDead ? 0 : 2;
-        // Left brow
         ctx.beginPath();
-        ctx.moveTo(-13 * s, (-46 - browAnger) * s);
-        ctx.quadraticCurveTo(-6 * s, (-48 + browAnger * 0.8) * s, 1 * s, (-45 + browAnger * 0.3) * s);
+        ctx.moveTo(-14 * s, (-46 + this.browAngle * 10) * s);
+        ctx.quadraticCurveTo(-5 * s, (-44 - this.browAngle * 5) * s, 1 * s, -44 * s);
         ctx.stroke();
-        // Right brow
         ctx.beginPath();
-        ctx.moveTo(4 * s, (-45 + browAnger * 0.3) * s);
-        ctx.quadraticCurveTo(10 * s, (-48 + browAnger * 0.5) * s, 16 * s, (-46 - browAnger * 0.6) * s);
+        ctx.moveTo(4 * s, -44 * s);
+        ctx.quadraticCurveTo(10 * s, (-44 - this.browAngle * 5) * s, 17 * s, (-46 + this.browAngle * 10) * s);
         ctx.stroke();
         ctx.lineCap = 'butt';
 
-        // Bags under eyes
-        if (this.baggyEyes) {
-            ctx.strokeStyle = shadeColor(this.skin, -25);
-            ctx.lineWidth = 1.2 * s;
-            for (let eye = 0; eye < 2; eye++) {
-                const ex = eye === 0 ? -4 * s : 9 * s;
-                ctx.beginPath();
-                ctx.arc(ex, eyeY + 4 * s, 6 * s, 0.3, Math.PI - 0.3);
-                ctx.stroke();
-            }
-        }
-
-        // Wrinkles
-        if (this.wrinkles) {
-            ctx.strokeStyle = shadeColor(this.skin, -20);
-            ctx.lineWidth = 0.8 * s;
-            // Forehead
-            ctx.beginPath();
-            ctx.moveTo(-8 * s, -47 * s);
-            ctx.quadraticCurveTo(0, -48 * s, 8 * s, -47 * s);
-            ctx.stroke();
-            // Nasolabial fold
-            ctx.beginPath();
-            ctx.moveTo(12 * s, -28 * s);
-            ctx.quadraticCurveTo(14 * s, -22 * s, 12 * s, -18 * s);
-            ctx.stroke();
-        }
-
-        // === NOSE — big Simpsons schnoz ===
+        // === NOSE — big, crooked ===
         ctx.fillStyle = this.skin;
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
         ctx.beginPath();
-        ctx.moveTo(6 * s, -30 * s);
-        ctx.quadraticCurveTo(20 * s, -32 * s, 22 * s, -26 * s);
-        ctx.quadraticCurveTo(23 * s, -22 * s, 18 * s, -22 * s);
-        ctx.quadraticCurveTo(14 * s, -22 * s, 12 * s, -24 * s);
+        ctx.moveTo(6 * s, -32 * s);
+        ctx.quadraticCurveTo(16 * s, -32 * s, (18 + this.noseLen * 6) * s, -26 * s);
+        ctx.quadraticCurveTo((20 + this.noseLen * 4) * s, -22 * s, 14 * s, -22 * s);
+        ctx.quadraticCurveTo(10 * s, -22 * s, 8 * s, -26 * s);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
         // Nostril
-        ctx.fillStyle = shadeColor(this.skin, -35);
+        ctx.fillStyle = '#1a1a1a';
         ctx.beginPath();
-        ctx.ellipse(17 * s, -24 * s, 2 * s, 1.5 * s, 0.3, 0, Math.PI * 2);
+        ctx.ellipse((14 + this.noseLen * 2) * s, -24 * s, 2 * s, 1.5 * s, 0.3, 0, Math.PI * 2);
         ctx.fill();
 
-        // === MOUTH — unhappy expressions ===
+        // Warts
+        if (this.hasWarts) {
+            ctx.fillStyle = shadeColor(this.skin, -15);
+            ctx.beginPath();
+            ctx.arc((16 + this.noseLen * 3) * s, -27 * s, 2 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(14 * s, -20 * s, 1.5 * s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // === MOUTH — grimacing, showing teeth/fangs ===
         ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        const mouthY = -18 * s;
+        const mouthY = -16 * s;
 
         if (isDead) {
-            // Wavy death mouth
-            ctx.beginPath();
-            ctx.moveTo(4 * s, mouthY);
-            ctx.quadraticCurveTo(8 * s, mouthY + 3 * s, 11 * s, mouthY);
-            ctx.quadraticCurveTo(14 * s, mouthY - 3 * s, 18 * s, mouthY);
-            ctx.stroke();
-            // Tongue hanging out
-            ctx.fillStyle = '#cc3355';
-            ctx.beginPath();
-            ctx.ellipse(12 * s, mouthY + 3 * s, 3 * s, 5 * s, 0.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-        } else if (this.mouthType === 0) {
-            // Deep frown
-            ctx.lineWidth = 2.5 * s;
-            ctx.beginPath();
-            ctx.moveTo(4 * s, mouthY);
-            ctx.quadraticCurveTo(12 * s, mouthY + 8 * s, 20 * s, mouthY + 1 * s);
-            ctx.stroke();
-            // Overbite bump
-            ctx.fillStyle = this.skin;
+            // Tongue out
+            ctx.strokeStyle = OL;
             ctx.lineWidth = lw;
             ctx.beginPath();
-            ctx.ellipse(14 * s, mouthY - 1 * s, 7 * s, 3 * s, 0, 0, Math.PI);
-            ctx.fill();
-            ctx.strokeStyle = OL;
+            ctx.moveTo(4 * s, mouthY);
+            ctx.quadraticCurveTo(8 * s, mouthY + 2 * s, 12 * s, mouthY);
+            ctx.quadraticCurveTo(16 * s, mouthY - 2 * s, 20 * s, mouthY);
             ctx.stroke();
-        } else if (this.mouthType === 1) {
-            // Grimace with teeth
-            ctx.fillStyle = '#4a0000';
+            ctx.fillStyle = '#884455';
             ctx.beginPath();
-            ctx.moveTo(4 * s, mouthY - 2 * s);
-            ctx.lineTo(20 * s, mouthY - 2 * s);
-            ctx.quadraticCurveTo(21 * s, mouthY + 4 * s, 12 * s, mouthY + 5 * s);
-            ctx.quadraticCurveTo(3 * s, mouthY + 4 * s, 4 * s, mouthY - 2 * s);
+            ctx.ellipse(12 * s, mouthY + 4 * s, 4 * s, 6 * s, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        } else {
+            // Open grimace
+            ctx.fillStyle = '#2a0000';
+            ctx.beginPath();
+            ctx.moveTo(3 * s, mouthY - 2 * s);
+            ctx.lineTo(20 * s * this.jawSize, mouthY - 2 * s);
+            ctx.quadraticCurveTo(22 * s * this.jawSize, mouthY + 5 * s, 14 * s, mouthY + 6 * s * this.jawSize);
+            ctx.quadraticCurveTo(4 * s, mouthY + 5 * s, 3 * s, mouthY - 2 * s);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
-            // Teeth
-            ctx.fillStyle = '#ffffee';
-            ctx.fillRect(5 * s, mouthY - 2 * s, 14 * s, 3 * s);
-            ctx.strokeRect(5 * s, mouthY - 2 * s, 14 * s, 3 * s);
-            // Individual teeth lines
-            ctx.lineWidth = 0.8 * s;
-            for (let t = 0; t < 4; t++) {
-                const tx = 7 * s + t * 3 * s;
+
+            // Teeth — irregular, some missing
+            ctx.fillStyle = '#ddd8c0';
+            const toothCount = 6;
+            for (let t = 0; t < toothCount; t++) {
+                if (t === this.missingTeeth || t === this.missingTeeth + 3) continue; // missing!
+                const tx = (5 + t * 2.2) * s;
+                const th = (2 + Math.random() * 1.5) * s;
+                ctx.fillRect(tx, mouthY - 2 * s, 1.8 * s, th);
+                ctx.strokeRect(tx, mouthY - 2 * s, 1.8 * s, th);
+            }
+
+            // Fangs
+            if (this.hasFangs) {
+                ctx.fillStyle = '#eeeecc';
+                // Left fang
                 ctx.beginPath();
-                ctx.moveTo(tx, mouthY - 2 * s);
-                ctx.lineTo(tx, mouthY + 1 * s);
+                ctx.moveTo(5 * s, mouthY - 1 * s);
+                ctx.lineTo(6 * s, mouthY + 6 * s);
+                ctx.lineTo(7 * s, mouthY - 1 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // Right fang
+                ctx.beginPath();
+                ctx.moveTo(16 * s, mouthY - 1 * s);
+                ctx.lineTo(17 * s, mouthY + 6 * s);
+                ctx.lineTo(18 * s, mouthY - 1 * s);
+                ctx.closePath();
+                ctx.fill();
                 ctx.stroke();
             }
-        } else if (this.mouthType === 2) {
-            // Yelling / screaming O
-            ctx.fillStyle = '#3a0000';
-            ctx.beginPath();
-            ctx.ellipse(12 * s, mouthY + 1 * s, 7 * s, 6 * s, 0.1, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            // Teeth top
-            ctx.fillStyle = '#ffffee';
-            ctx.beginPath();
-            ctx.ellipse(12 * s, mouthY - 3 * s, 5 * s, 2 * s, 0, 0, Math.PI);
-            ctx.fill();
-            ctx.stroke();
-            // Uvula
-            ctx.fillStyle = '#cc3355';
-            ctx.beginPath();
-            ctx.ellipse(12 * s, mouthY + 4 * s, 2 * s, 2.5 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-        } else {
-            // Crooked frown
-            ctx.lineWidth = 2.5 * s;
-            ctx.beginPath();
-            ctx.moveTo(4 * s, mouthY + 2 * s);
-            ctx.quadraticCurveTo(10 * s, mouthY + 5 * s, 14 * s, mouthY);
-            ctx.quadraticCurveTo(17 * s, mouthY - 2 * s, 20 * s, mouthY + 3 * s);
-            ctx.stroke();
         }
 
-        // === 5 O'CLOCK SHADOW ===
-        if (this.has5oClock) {
-            ctx.fillStyle = '#888';
-            ctx.globalAlpha *= 0.15;
+        // Drool
+        if (this.hasDrool && this.alive) {
+            ctx.strokeStyle = '#aabbcc';
+            ctx.lineWidth = 1.2 * s;
+            ctx.globalAlpha *= 0.5;
+            const droolWave = Math.sin(this.walkCycle * 2) * 2 * s;
             ctx.beginPath();
-            ctx.ellipse(10 * s, -17 * s, 14 * s, 8 * s, 0.1, 0, Math.PI);
+            ctx.moveTo(10 * s, mouthY + 5 * s);
+            ctx.quadraticCurveTo(10 * s + droolWave, mouthY + 14 * s, 12 * s, mouthY + 18 * s);
+            ctx.stroke();
+            // Drip
+            ctx.fillStyle = '#aabbcc';
+            ctx.beginPath();
+            ctx.arc(12 * s, mouthY + 18 * s, 1.5 * s, 0, Math.PI * 2);
             ctx.fill();
             ctx.globalAlpha = Math.max(0, this.opacity);
         }
 
-        // === BEARD ===
-        if (this.hasBeard) {
-            ctx.fillStyle = shadeColor(this.hair, 20);
-            ctx.strokeStyle = OL;
-            ctx.lineWidth = lw;
-            ctx.beginPath();
-            ctx.moveTo(2 * s, -18 * s);
-            ctx.quadraticCurveTo(0, -10 * s, 6 * s, -8 * s);
-            ctx.quadraticCurveTo(14 * s, -8 * s, 18 * s, -14 * s);
-            ctx.quadraticCurveTo(20 * s, -18 * s, 16 * s, -18 * s);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-            // Beard texture
-            ctx.strokeStyle = shadeColor(this.hair, -10);
-            ctx.lineWidth = 0.7 * s;
-            for (let bl = 0; bl < 4; bl++) {
-                const bx = 5 * s + bl * 3 * s;
+        // === SCARS ===
+        if (this.scars.length > 0) {
+            ctx.strokeStyle = '#994466';
+            ctx.lineWidth = 1.5 * s;
+            for (const scar of this.scars) {
                 ctx.beginPath();
-                ctx.moveTo(bx, -16 * s);
-                ctx.lineTo(bx + 1 * s, -10 * s);
+                ctx.moveTo(scar.x * s, scar.y * s);
+                ctx.lineTo(
+                    (scar.x + Math.cos(scar.angle) * scar.len) * s,
+                    (scar.y + Math.sin(scar.angle) * scar.len) * s
+                );
                 ctx.stroke();
+                // Stitch marks
+                ctx.lineWidth = 0.6 * s;
+                for (let st = 0.2; st < 0.8; st += 0.3) {
+                    const stx = scar.x + Math.cos(scar.angle) * scar.len * st;
+                    const sty = scar.y + Math.sin(scar.angle) * scar.len * st;
+                    const perp = scar.angle + Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.moveTo((stx + Math.cos(perp) * 2) * s, (sty + Math.sin(perp) * 2) * s);
+                    ctx.lineTo((stx - Math.cos(perp) * 2) * s, (sty - Math.sin(perp) * 2) * s);
+                    ctx.stroke();
+                }
+                ctx.lineWidth = 1.5 * s;
             }
         }
 
-        // === SWEAT DROP ===
-        if (this.sweatDrop && this.alive) {
-            const sweatBob = Math.sin(this.walkCycle * 2) * 2 * s;
-            ctx.fillStyle = '#66ccff';
-            ctx.strokeStyle = OL;
-            ctx.lineWidth = 1 * s;
-            ctx.beginPath();
-            ctx.moveTo(-14 * s, -40 * s + sweatBob);
-            ctx.quadraticCurveTo(-18 * s, -36 * s + sweatBob, -14 * s, -33 * s + sweatBob);
-            ctx.quadraticCurveTo(-10 * s, -36 * s + sweatBob, -14 * s, -40 * s + sweatBob);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-        }
+        ctx.restore(); // end head tilt
 
-        ctx.restore();
+        ctx.restore(); // end main transform
     }
 }
 
