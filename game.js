@@ -1661,8 +1661,8 @@ function drawMenu() {
     ctx.fillRect(deskX + deskW - 32, deskY + deskH, 12, h * 0.2);
 
     // === LAPTOP ===
-    const laptopW = Math.min(900, w * 0.82);
-    const laptopH = laptopW * 0.55;
+    const laptopW = Math.min(750, w * 0.68);
+    const laptopH = laptopW * 0.56;
     const laptopX = w / 2 - laptopW / 2;
     const laptopY = deskY - laptopH - 8;
 
@@ -1772,11 +1772,109 @@ function drawMenu() {
     }
     ctx.globalAlpha = 1;
 
-    // Small blinking LED on laptop (webcam)
-    ctx.fillStyle = Math.sin(t * 3) > 0.3 ? '#00ff00' : '#003300';
+    // Webcam LED with band-aid over it
+    const ledX = w / 2;
+    const ledY = laptopY - 4;
+    const ledOn = Math.sin(t * 3) > 0.3;
+
+    // Band-aid (Pflaster) — skin-colored rectangle with rounded ends
+    ctx.save();
+    ctx.translate(ledX, ledY);
+    ctx.rotate(0.15); // slightly crooked, like hastily stuck on
+
+    // Band-aid shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.arc(w / 2, laptopY - 4, 2, 0, Math.PI * 2);
+    ctx.roundRect(-16, -5.5, 32, 12, 5);
     ctx.fill();
+
+    // Band-aid body
+    ctx.fillStyle = '#d4a574';
+    ctx.beginPath();
+    ctx.roundRect(-15, -6, 30, 11, 5);
+    ctx.fill();
+    ctx.strokeStyle = '#b8895a';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Band-aid pad (center gauze)
+    ctx.fillStyle = '#e8d8c4';
+    ctx.fillRect(-6, -4, 12, 7);
+
+    // Band-aid holes (ventilation dots)
+    ctx.fillStyle = '#c49a6e';
+    for (let bx = -4; bx <= 4; bx += 4) {
+        for (let by = -2; by <= 2; by += 4) {
+            ctx.beginPath();
+            ctx.arc(bx, by, 0.7, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Band-aid edge texture lines
+    ctx.strokeStyle = '#c49a6e';
+    ctx.lineWidth = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(-15, -2); ctx.lineTo(-7, -2);
+    ctx.moveTo(-15, 1); ctx.lineTo(-7, 1);
+    ctx.moveTo(7, -2); ctx.lineTo(15, -2);
+    ctx.moveTo(7, 1); ctx.lineTo(15, 1);
+    ctx.stroke();
+
+    // LED glow bleeding THROUGH the band-aid
+    if (ledOn) {
+        // Soft green glow through gauze
+        const bandGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 10);
+        bandGlow.addColorStop(0, 'rgba(0, 255, 50, 0.35)');
+        bandGlow.addColorStop(0.4, 'rgba(0, 255, 50, 0.12)');
+        bandGlow.addColorStop(1, 'rgba(0, 255, 50, 0)');
+        ctx.fillStyle = bandGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Brighter center dot through gauze
+        ctx.fillStyle = 'rgba(100, 255, 100, 0.25)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Edge light leaking around band-aid sides
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#00ff44';
+        ctx.beginPath();
+        ctx.ellipse(-6, 0, 1.5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(6, 0, 1.5, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    } else {
+        // Faint residual glow even when "off"
+        ctx.fillStyle = 'rgba(0, 80, 20, 0.08)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Band-aid peeling corner (top-right, slightly lifted)
+    ctx.fillStyle = '#ddb88a';
+    ctx.beginPath();
+    ctx.moveTo(13, -6);
+    ctx.quadraticCurveTo(16, -7, 15.5, -4);
+    ctx.lineTo(13, -4);
+    ctx.closePath();
+    ctx.fill();
+    // Shadow under peeling corner
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(13, -4);
+    ctx.lineTo(15, -3.5);
+    ctx.lineTo(13, -3);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 
     // Coffee mug on desk
     const mugX = deskX + deskW - 60;
@@ -1812,6 +1910,97 @@ function drawMenu() {
     ctx.fill();
     ctx.strokeStyle = '#2a2a3a';
     ctx.stroke();
+
+    // === DESK CHAIR (in front of desk) ===
+    const chairX = w / 2;
+    const chairY = h * 0.78;
+
+    // Chair base / star legs
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 3;
+    for (let leg = 0; leg < 5; leg++) {
+        const angle = (leg / 5) * Math.PI - Math.PI / 2 + 0.3;
+        const legLen = 35;
+        const lx = Math.cos(angle) * legLen;
+        const ly = Math.abs(Math.sin(angle)) * legLen * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(chairX, chairY + 20);
+        ctx.lineTo(chairX + lx, chairY + 20 + ly);
+        ctx.stroke();
+        // Caster wheels
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(chairX + lx, chairY + 20 + ly, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#2a2a2a';
+    }
+
+    // Chair hydraulic cylinder
+    ctx.fillStyle = '#222';
+    ctx.fillRect(chairX - 3, chairY - 20, 6, 42);
+    // Chrome ring
+    ctx.fillStyle = '#444';
+    ctx.fillRect(chairX - 5, chairY + 15, 10, 4);
+
+    // Chair seat (from the side, slight perspective)
+    ctx.fillStyle = '#1a1a20';
+    ctx.beginPath();
+    ctx.roundRect(chairX - 40, chairY - 24, 80, 12, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2a34';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Seat cushion top
+    ctx.fillStyle = '#222230';
+    ctx.beginPath();
+    ctx.roundRect(chairX - 38, chairY - 28, 76, 8, [4, 4, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+
+    // Chair backrest
+    ctx.fillStyle = '#1a1a22';
+    ctx.beginPath();
+    ctx.roundRect(chairX - 34, chairY - 80, 68, 55, [8, 8, 2, 2]);
+    ctx.fill();
+    ctx.strokeStyle = '#2a2a34';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Backrest cushion details (stitching lines)
+    ctx.strokeStyle = '#252530';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(chairX - 20, chairY - 75);
+    ctx.lineTo(chairX - 20, chairY - 28);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(chairX + 20, chairY - 75);
+    ctx.lineTo(chairX + 20, chairY - 28);
+    ctx.stroke();
+    // Lumbar support bump
+    ctx.fillStyle = '#202028';
+    ctx.beginPath();
+    ctx.ellipse(chairX, chairY - 45, 28, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Armrests
+    for (let arm = -1; arm <= 1; arm += 2) {
+        const armX = chairX + arm * 42;
+        // Armrest support (vertical)
+        ctx.fillStyle = '#222';
+        ctx.fillRect(armX - 2, chairY - 30, 4, 12);
+        // Armrest pad (horizontal)
+        ctx.fillStyle = '#1a1a22';
+        ctx.beginPath();
+        ctx.roundRect(armX - 14, chairY - 34, 28, 6, 3);
+        ctx.fill();
+        ctx.strokeStyle = '#2a2a34';
+        ctx.stroke();
+    }
 
     // === MATRIX-STYLE FALLING CHARACTERS (subtle) ===
     ctx.font = '12px monospace';
