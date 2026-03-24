@@ -37,6 +37,10 @@ let comboCount = 0;
 let comboTimer = 0;
 let shakeTimer = 0;
 let shakeIntensity = 0;
+let poops = [];
+let splatters = []; // splats on screen that fade
+let poopMode = false; // toggle with P key
+let poopCooldown = 0; // throw rate limiter
 
 // ---- Audio context (lazy init) ----
 let audioCtx = null;
@@ -99,6 +103,43 @@ function playReload() {
     osc.connect(gain).connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
+}
+
+function playPoopThrow() {
+    const ctx = getAudio();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.2, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+        const t = i / data.length;
+        data[i] = (Math.random() * 2 - 1) * 0.3 * Math.pow(1 - t, 2) *
+                  Math.sin(t * 300) * (1 + Math.sin(t * 50) * 0.5);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.25;
+    src.connect(gain).connect(ctx.destination);
+    src.start();
+}
+
+function playPoopSplat() {
+    const ctx = getAudio();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+        const t = i / data.length;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.5) * 0.4 *
+                  (1 + Math.sin(t * 180) * 0.3);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.3;
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start();
 }
 
 function playGameOver() {
@@ -373,6 +414,246 @@ class ShotEffect {
     }
 }
 
+// ---- Poop projectile with realistic physics ----
+class Poop {
+    constructor(startX, startY, targetX, targetY) {
+        this.x = startX;
+        this.y = startY;
+        this.radius = 10 + Math.random() * 4;
+
+        // Calculate launch velocity for a nice arc toward target
+        const dx = targetX - startX;
+        const dy = targetY - startY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const speed = Math.min(900, 300 + dist * 0.6);
+        const angle = Math.atan2(dy, dx);
+        // Add upward arc — steeper for closer targets
+        const arcAngle = angle - Math.max(0.3, 0.8 - dist / 2000);
+
+        this.vx = Math.cos(arcAngle) * speed;
+        this.vy = Math.sin(arcAngle) * speed;
+
+        // Physics constants
+        this.gravity = 600;       // pixels/s^2
+        this.airDrag = 0.3;       // velocity damping factor
+        this.windForce = (Math.random() - 0.5) * 30; // slight random wind
+
+        // Rotation (spin)
+        this.rotation = 0;
+        this.spin = (Math.random() - 0.5) * 15; // rad/s
+
+        // Trail
+        this.trail = [];
+        this.alive = true;
+        this.splatted = false;
+
+        // Squash & stretch
+        this.squash = 1;
+    }
+
+    update(dt) {
+        if (this.splatted) return;
+
+        // Store trail position
+        this.trail.push({ x: this.x, y: this.y, life: 0.3 });
+        if (this.trail.length > 12) this.trail.shift();
+
+        // Air resistance (quadratic drag approximation)
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        if (speed > 0) {
+            const dragForce = this.airDrag * speed * dt;
+            this.vx -= (this.vx / speed) * dragForce;
+            this.vy -= (this.vy / speed) * dragForce;
+        }
+
+        // Gravity
+        this.vy += this.gravity * dt;
+
+        // Wind
+        this.vx += this.windForce * dt;
+
+        // Position
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+
+        // Rotation
+        this.rotation += this.spin * dt;
+        // Spin slows with drag
+        this.spin *= (1 - 0.5 * dt);
+
+        // Squash & stretch based on velocity direction
+        const velAngle = Math.atan2(this.vy, this.vx);
+        this.squash = 1 + Math.min(0.4, speed / 1500);
+
+        // Decay trail
+        this.trail.forEach(t => t.life -= dt);
+        this.trail = this.trail.filter(t => t.life > 0);
+
+        // Off-screen check (bottom or way off sides)
+        if (this.y > H() + 50 || this.x < -100 || this.x > W() + 100) {
+            this.alive = false;
+        }
+    }
+
+    hitTest(chicken) {
+        if (this.splatted || !chicken.alive) return false;
+        const dx = this.x - chicken.x;
+        const dy = this.y - chicken.y;
+        const hitDist = this.radius + chicken.w * 0.4;
+        return (dx * dx + dy * dy) < hitDist * hitDist;
+    }
+
+    splat() {
+        this.splatted = true;
+        this.alive = false;
+    }
+
+    draw(ctx) {
+        if (this.splatted) return;
+
+        // Draw trail
+        for (let i = 0; i < this.trail.length; i++) {
+            const t = this.trail[i];
+            const alpha = (t.life / 0.3) * 0.3;
+            const trailSize = this.radius * 0.4 * (i / this.trail.length);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = '#6b4226';
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, trailSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        // Squash & stretch along velocity direction
+        const velAngle = Math.atan2(this.vy, this.vx);
+        ctx.rotate(velAngle);
+        ctx.scale(this.squash, 1 / this.squash);
+        ctx.rotate(-velAngle);
+
+        const r = this.radius;
+
+        // Main poop body — lumpy irregular shape
+        ctx.fillStyle = '#5c3317';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, r, r * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Darker shading
+        ctx.fillStyle = '#3e2210';
+        ctx.beginPath();
+        ctx.ellipse(r * 0.15, r * 0.15, r * 0.6, r * 0.45, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Highlight
+        ctx.fillStyle = '#7a4a2a';
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.2, -r * 0.2, r * 0.35, r * 0.25, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Stink lines (small wavy lines above)
+        ctx.strokeStyle = '#8a7a40';
+        ctx.lineWidth = 1.2;
+        ctx.globalAlpha = 0.5;
+        for (let i = -1; i <= 1; i++) {
+            ctx.beginPath();
+            const sx = i * r * 0.4;
+            ctx.moveTo(sx, -r);
+            ctx.quadraticCurveTo(sx + 3, -r - 5, sx - 2, -r - 10);
+            ctx.quadraticCurveTo(sx + 4, -r - 15, sx, -r - 18);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.restore();
+    }
+}
+
+// ---- Splatter on screen ----
+class Splatter {
+    constructor(x, y, size) {
+        this.x = x;
+        this.y = y;
+        this.size = size || 30;
+        this.life = 4.0; // fades over 4 seconds
+        this.maxLife = 4.0;
+        this.rotation = Math.random() * Math.PI * 2;
+        // Generate random splat blobs
+        this.blobs = [];
+        const blobCount = 5 + Math.floor(Math.random() * 6);
+        for (let i = 0; i < blobCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * this.size * 0.8;
+            this.blobs.push({
+                x: Math.cos(angle) * dist,
+                y: Math.sin(angle) * dist,
+                r: 4 + Math.random() * (this.size * 0.4),
+                color: Math.random() < 0.5 ? '#5c3317' : '#4a2810',
+            });
+        }
+        // Drip trails
+        this.drips = [];
+        const dripCount = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < dripCount; i++) {
+            this.drips.push({
+                x: (Math.random() - 0.5) * this.size,
+                y: 0,
+                targetY: 10 + Math.random() * 30,
+                currentY: 0,
+                width: 2 + Math.random() * 3,
+            });
+        }
+    }
+
+    update(dt) {
+        this.life -= dt;
+        // Animate drips
+        for (const drip of this.drips) {
+            if (drip.currentY < drip.targetY) {
+                drip.currentY += 20 * dt;
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (this.life <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.life / (this.maxLife * 0.3));
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        // Draw splat blobs
+        for (const blob of this.blobs) {
+            ctx.fillStyle = blob.color;
+            ctx.beginPath();
+            ctx.ellipse(blob.x, blob.y, blob.r, blob.r * 0.7, Math.random(), 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Center darker
+        ctx.fillStyle = '#3e2210';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.rotate(-this.rotation);
+        // Drips (always go downward regardless of rotation)
+        ctx.fillStyle = '#5c3317';
+        for (const drip of this.drips) {
+            ctx.fillRect(drip.x - drip.width / 2, drip.y, drip.width, drip.currentY);
+            // Drip blob at bottom
+            ctx.beginPath();
+            ctx.arc(drip.x, drip.currentY, drip.width * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+}
+
 // ---- Floating score text ----
 let floatingTexts = [];
 class FloatingText {
@@ -630,6 +911,23 @@ function drawHUD() {
         ctx.fillRect(w / 2 - 60, h - 50, 120 * reloadProgress, 10);
     }
 
+    // Mode indicator
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 20px Arial Black, Arial';
+    ctx.lineWidth = 3;
+    if (poopMode) {
+        ctx.fillStyle = '#8B4513';
+        ctx.strokeStyle = '#000';
+        ctx.strokeText('POOP MODE [P]', w / 2, h - 20);
+        ctx.fillText('POOP MODE [P]', w / 2, h - 20);
+    } else {
+        ctx.fillStyle = '#888';
+        ctx.strokeStyle = '#000';
+        ctx.font = '14px Arial, sans-serif';
+        ctx.strokeText('[P] Poop Mode', w / 2, h - 20);
+        ctx.fillText('[P] Poop Mode', w / 2, h - 20);
+    }
+
     // Combo
     if (comboCount >= 2 && comboTimer > 0) {
         ctx.fillStyle = '#ffee00';
@@ -648,26 +946,94 @@ function drawHUD() {
 function drawCrosshair() {
     ctx.save();
     ctx.translate(mouseX, mouseY);
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 2;
-    const size = 18;
-    const gap = 5;
-    // Lines
-    ctx.beginPath();
-    ctx.moveTo(-size, 0); ctx.lineTo(-gap, 0);
-    ctx.moveTo(size, 0); ctx.lineTo(gap, 0);
-    ctx.moveTo(0, -size); ctx.lineTo(0, -gap);
-    ctx.moveTo(0, size); ctx.lineTo(0, gap);
-    ctx.stroke();
-    // Circle
-    ctx.beginPath();
-    ctx.arc(0, 0, size * 0.65, 0, Math.PI * 2);
-    ctx.stroke();
-    // Center dot
-    ctx.fillStyle = '#ff0000';
-    ctx.beginPath();
-    ctx.arc(0, 0, 2, 0, Math.PI * 2);
-    ctx.fill();
+
+    if (poopMode && state === 'playing') {
+        // Poop cursor — a small poop icon with arc indicator
+        ctx.rotate(Math.sin(Date.now() / 200) * 0.1);
+        const r = 10;
+        // Poop shape
+        ctx.fillStyle = '#5c3317';
+        ctx.beginPath();
+        ctx.arc(0, 2, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4a2810';
+        ctx.beginPath();
+        ctx.arc(0, -3, r * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#6b4226';
+        ctx.beginPath();
+        ctx.arc(0, -8, r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        // Stink lines
+        ctx.strokeStyle = '#8a7a40';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.6;
+        for (let i = -1; i <= 1; i++) {
+            const wobble = Math.sin(Date.now() / 150 + i) * 3;
+            ctx.beginPath();
+            ctx.moveTo(i * 6, -14);
+            ctx.quadraticCurveTo(i * 6 + wobble, -20, i * 6 - wobble, -26);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // Arc trajectory preview (dotted line showing where poop will go)
+        ctx.restore();
+        ctx.save();
+        if (state === 'playing') {
+            const startX = W() / 2;
+            const startY = H() - 30;
+            const dx = mouseX - startX;
+            const dy = mouseY - startY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = Math.min(900, 300 + dist * 0.6);
+            const angle = Math.atan2(dy, dx);
+            const arcAngle = angle - Math.max(0.3, 0.8 - dist / 2000);
+            let pvx = Math.cos(arcAngle) * speed;
+            let pvy = Math.sin(arcAngle) * speed;
+            let px = startX, py = startY;
+            ctx.strokeStyle = '#5c331766';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 8]);
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            for (let t = 0; t < 25; t++) {
+                const sdt = 0.03;
+                const spd = Math.sqrt(pvx * pvx + pvy * pvy);
+                if (spd > 0) {
+                    const drag = 0.3 * spd * sdt;
+                    pvx -= (pvx / spd) * drag;
+                    pvy -= (pvy / spd) * drag;
+                }
+                pvy += 600 * sdt;
+                px += pvx * sdt;
+                py += pvy * sdt;
+                ctx.lineTo(px, py);
+                if (py > H()) break;
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    } else {
+        // Normal gun crosshair
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        const size = 18;
+        const gap = 5;
+        ctx.beginPath();
+        ctx.moveTo(-size, 0); ctx.lineTo(-gap, 0);
+        ctx.moveTo(size, 0); ctx.lineTo(gap, 0);
+        ctx.moveTo(0, -size); ctx.lineTo(0, -gap);
+        ctx.moveTo(0, size); ctx.lineTo(0, gap);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, 0, size * 0.65, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
     ctx.restore();
 }
 
@@ -720,6 +1086,7 @@ function drawMenu() {
     const instructions = [
         'Shoot the chickens! Smaller = more points',
         'R to reload  |  8 shells per clip  |  90 seconds',
+        'P to toggle POOP MODE — throw poop with realistic physics!',
         'Golden chickens are worth 75 points!',
     ];
     instructions.forEach((line, i) => {
@@ -797,6 +1164,9 @@ function startGame() {
     comboCount = 0;
     comboTimer = 0;
     spawnTimer = 0;
+    poops = [];
+    splatters = [];
+    poopCooldown = 0;
 }
 
 // ---- Shoot ----
@@ -865,6 +1235,22 @@ function reload() {
     reloadTimer = reloadTime;
 }
 
+// ---- Poop throwing ----
+function throwPoop() {
+    if (state !== 'playing') return;
+    if (poopCooldown > 0) return;
+
+    // Launch from bottom center of screen toward mouse
+    const startX = W() / 2 + (Math.random() - 0.5) * 40;
+    const startY = H() - 30;
+
+    poops.push(new Poop(startX, startY, mouseX, mouseY));
+    playPoopThrow();
+    poopCooldown = 0.35; // throw rate limit
+    shakeTimer = 0.05;
+    shakeIntensity = 2;
+}
+
 // ---- Main loop ----
 function gameLoop(timestamp) {
     const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
@@ -915,6 +1301,57 @@ function updateGame(dt) {
     // Screen shake
     if (shakeTimer > 0) shakeTimer -= dt;
 
+    // Poop cooldown
+    if (poopCooldown > 0) poopCooldown -= dt;
+
+    // Update poops
+    poops.forEach(p => p.update(dt));
+    // Check poop-chicken collisions
+    for (const poop of poops) {
+        if (poop.splatted || !poop.alive) continue;
+        for (let i = chickens.length - 1; i >= 0; i--) {
+            const c = chickens[i];
+            if (poop.hitTest(c)) {
+                poop.splat();
+                c.alive = false;
+                c.fallSpeed = -80;
+
+                // Points with combo
+                comboTimer = 1.5;
+                comboCount++;
+                const multiplier = Math.min(comboCount, 5);
+                const pts = c.points * multiplier;
+                score += pts;
+
+                // Effects
+                playPoopSplat();
+                floatingTexts.push(new FloatingText(c.x, c.y - 20,
+                    `+${pts}${multiplier > 1 ? ` (x${multiplier})` : ''}`,
+                    c.name === 'golden' ? '#ffdd00' : '#fff'));
+
+                // Splatter on chicken position
+                splatters.push(new Splatter(c.x, c.y, 25 + poop.radius));
+
+                // Poop particles (brown)
+                for (let p = 0; p < 15; p++) {
+                    particles.push(new Particle(c.x, c.y,
+                        Math.random() < 0.5 ? '#5c3317' : '#4a2810'));
+                }
+                // Feathers too
+                for (let f = 0; f < 4; f++) {
+                    feathers.push(new Feather(c.x, c.y, c.color));
+                }
+
+                break;
+            }
+        }
+    }
+    poops = poops.filter(p => p.alive);
+
+    // Update splatters
+    splatters.forEach(s => s.update(dt));
+    splatters = splatters.filter(s => s.life > 0);
+
     // Spawn chickens
     spawnTimer -= dt;
     if (spawnTimer <= 0) {
@@ -952,8 +1389,14 @@ function drawGame() {
 
     drawBackground();
 
+    // Draw splatters (behind chickens)
+    splatters.forEach(s => s.draw(ctx));
+
     // Draw chickens
     chickens.forEach(c => c.draw(ctx));
+
+    // Draw poops in flight
+    poops.forEach(p => p.draw(ctx));
 
     // Draw particles
     particles.forEach(p => p.draw(ctx));
@@ -987,7 +1430,11 @@ canvas.addEventListener('mousedown', e => {
     if (state === 'menu') {
         startGame();
     } else if (state === 'playing') {
-        shoot();
+        if (poopMode) {
+            throwPoop();
+        } else {
+            shoot();
+        }
     } else if (state === 'gameover') {
         state = 'menu';
     }
@@ -998,6 +1445,9 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
     if (e.key === 'r' || e.key === 'R') {
         if (state === 'playing') reload();
+    }
+    if (e.key === 'p' || e.key === 'P') {
+        poopMode = !poopMode;
     }
 });
 
