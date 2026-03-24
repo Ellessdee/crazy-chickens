@@ -421,22 +421,23 @@ class Poop {
         this.y = startY;
         this.radius = 10 + Math.random() * 4;
 
-        // Calculate launch velocity for a nice arc toward target
+        // Calculate launch velocity to actually reach the target
         const dx = targetX - startX;
         const dy = targetY - startY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const speed = Math.min(900, 300 + dist * 0.6);
-        const angle = Math.atan2(dy, dx);
-        // Add upward arc — steeper for closer targets
-        const arcAngle = angle - Math.max(0.3, 0.8 - dist / 2000);
 
-        this.vx = Math.cos(arcAngle) * speed;
-        this.vy = Math.sin(arcAngle) * speed;
+        // Use projectile motion formula to compute needed launch speed
+        // Solve for v given target position and gravity
+        const gravity = 350;
+        const flightTime = Math.max(0.6, dist / 600); // estimated time of flight
+        // vx = dx / t, vy = dy/t - 0.5*g*t (to counteract gravity)
+        this.vx = dx / flightTime;
+        this.vy = (dy / flightTime) - (0.5 * gravity * flightTime);
 
         // Physics constants
-        this.gravity = 600;       // pixels/s^2
-        this.airDrag = 0.3;       // velocity damping factor
-        this.windForce = (Math.random() - 0.5) * 30; // slight random wind
+        this.gravity = gravity;
+        this.airDrag = 0.12;      // light air drag
+        this.windForce = (Math.random() - 0.5) * 20; // slight random wind
 
         // Rotation (spin)
         this.rotation = 0;
@@ -986,11 +987,10 @@ function drawCrosshair() {
             const dx = mouseX - startX;
             const dy = mouseY - startY;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            const speed = Math.min(900, 300 + dist * 0.6);
-            const angle = Math.atan2(dy, dx);
-            const arcAngle = angle - Math.max(0.3, 0.8 - dist / 2000);
-            let pvx = Math.cos(arcAngle) * speed;
-            let pvy = Math.sin(arcAngle) * speed;
+            const gravity = 350;
+            const flightTime = Math.max(0.6, dist / 600);
+            let pvx = dx / flightTime;
+            let pvy = (dy / flightTime) - (0.5 * gravity * flightTime);
             let px = startX, py = startY;
             ctx.strokeStyle = '#5c331766';
             ctx.lineWidth = 2;
@@ -1001,11 +1001,11 @@ function drawCrosshair() {
                 const sdt = 0.03;
                 const spd = Math.sqrt(pvx * pvx + pvy * pvy);
                 if (spd > 0) {
-                    const drag = 0.3 * spd * sdt;
+                    const drag = 0.12 * spd * sdt;
                     pvx -= (pvx / spd) * drag;
                     pvy -= (pvy / spd) * drag;
                 }
-                pvy += 600 * sdt;
+                pvy += 350 * sdt;
                 px += pvx * sdt;
                 py += pvy * sdt;
                 ctx.lineTo(px, py);
