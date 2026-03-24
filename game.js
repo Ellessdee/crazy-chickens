@@ -1689,9 +1689,9 @@ function drawMenu() {
     }
 
     // === BAND-AID + LED — positioned relative to image draw area ===
-    // In the image, the laptop webcam area is roughly at 38% x, 16% y of the image
-    const bandX = dx + dw * 0.38;
-    const bandY = dy + dh * 0.16;
+    // Laptop webcam: top-center of the laptop screen in the image
+    const bandX = dx + dw * 0.40;
+    const bandY = dy + dh * 0.24;
     const ledOn = Math.sin(t * 3) > 0.3;
 
     ctx.save();
@@ -1815,14 +1815,14 @@ function drawMenu() {
     const glitch = Math.random() < 0.05;
     if (glitch) {
         ctx.fillStyle = '#ff0040';
-        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.07 - 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.16 - 2);
         ctx.fillStyle = '#00ffaa';
-        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.07 + 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.16 + 2);
     }
     ctx.fillStyle = '#00ff41';
     ctx.shadowColor = '#00ff41';
     ctx.shadowBlur = 25;
-    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.07);
+    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.16);
     ctx.shadowBlur = 0;
 
     // Subtitle / tagline
@@ -1830,7 +1830,7 @@ function drawMenu() {
     ctx.font = `${Math.min(16, w * 0.02)}px monospace`;
     ctx.shadowColor = '#00ff41';
     ctx.shadowBlur = 6;
-    ctx.fillText('> some creeps on an island are secretly running the world_', w / 2, h * 0.07 + 34);
+    ctx.fillText('> some creeps on an island are secretly running the world_', w / 2, h * 0.16 + 34);
     ctx.shadowBlur = 0;
 
     // ---- BOTTOM AREA (black gradient zone) ----
@@ -1841,7 +1841,7 @@ function drawMenu() {
         ctx.shadowColor = '#ff8800';
         ctx.shadowBlur = 8;
         ctx.font = 'bold 22px monospace';
-        ctx.fillText(`HIGH SCORE: ${highScore}`, w / 2, h * 0.88);
+        ctx.fillText(`HIGH SCORE: ${highScore}`, w / 2, h * 0.83);
         ctx.shadowBlur = 0;
     }
 
@@ -1852,7 +1852,7 @@ function drawMenu() {
     ctx.font = `bold ${Math.min(28, w * 0.035)}px monospace`;
     ctx.shadowColor = '#00ff41';
     ctx.shadowBlur = 15;
-    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.93);
+    ctx.fillText('[ CLICK TO START ]', w / 2, h * 0.89);
     ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
 
