@@ -16,6 +16,12 @@ window.addEventListener('resize', resize);
 const W = () => canvas.width;
 const H = () => canvas.height;
 
+// ---- Background image ----
+const bgImage = new Image();
+bgImage.src = 'Gemini_Generated_Image_l8dqdwl8dqdwl8dq.png';
+let bgLoaded = false;
+bgImage.onload = () => { bgLoaded = true; };
+
 // ---- Game state ----
 let state = 'menu'; // menu | playing | gameover
 let score = 0;
@@ -691,58 +697,30 @@ class FloatingText {
 function drawBackground() {
     const w = W(), h = H();
 
-    // Sky gradient
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-    skyGrad.addColorStop(0, '#1a8aef');
-    skyGrad.addColorStop(0.4, '#6bb8f7');
-    skyGrad.addColorStop(0.7, '#b0d8f8');
-    skyGrad.addColorStop(1, '#e8f0e0');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Sun
-    ctx.fillStyle = '#fff4c0';
-    ctx.globalAlpha = 0.8;
-    ctx.beginPath();
-    ctx.arc(w * 0.85, h * 0.12, 40, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.arc(w * 0.85, h * 0.12, 60, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    // Clouds
-    drawClouds();
-
-    // Far mountains
-    ctx.fillStyle = '#7799aa';
-    drawMountainRange(h * 0.55, 200, 0.3, 5);
-
-    // Near mountains
-    ctx.fillStyle = '#557755';
-    drawMountainRange(h * 0.65, 150, 0.5, 7);
-
-    // Far hills
-    ctx.fillStyle = '#448833';
-    drawHills(h * 0.72, 80, 12);
-
-    // Near hills / ground
-    ctx.fillStyle = '#336622';
-    drawHills(h * 0.82, 50, 8);
-
-    // Ground
-    const groundGrad = ctx.createLinearGradient(0, h * 0.85, 0, h);
-    groundGrad.addColorStop(0, '#2d5a1e');
-    groundGrad.addColorStop(1, '#1a3a10');
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(0, h * 0.85, w, h * 0.15);
-
-    // Trees
-    drawTrees();
-
-    // Fence
-    drawFence();
+    if (bgLoaded) {
+        // Draw image covering entire canvas, preserving aspect ratio
+        const imgRatio = bgImage.width / bgImage.height;
+        const canvasRatio = w / h;
+        let drawW, drawH, drawX, drawY;
+        if (canvasRatio > imgRatio) {
+            // Canvas is wider — fit width, crop height
+            drawW = w;
+            drawH = w / imgRatio;
+            drawX = 0;
+            drawY = (h - drawH) / 2;
+        } else {
+            // Canvas is taller — fit height, crop width
+            drawH = h;
+            drawW = h * imgRatio;
+            drawX = (w - drawW) / 2;
+            drawY = 0;
+        }
+        ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
+    } else {
+        // Fallback solid color while loading
+        ctx.fillStyle = '#2a8fd4';
+        ctx.fillRect(0, 0, w, h);
+    }
 }
 
 function drawClouds() {
