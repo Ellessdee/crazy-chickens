@@ -1689,9 +1689,9 @@ function drawMenu() {
     }
 
     // === BAND-AID + LED — positioned relative to image draw area ===
-    // Laptop webcam: top-center of the laptop screen in the image
-    const bandX = dx + dw * 0.40;
-    const bandY = dy + dh * 0.24;
+    // Laptop webcam: top edge of laptop lid, center of screen
+    const bandX = dx + dw * 0.37;
+    const bandY = dy + dh * 0.155;
     const ledOn = Math.sin(t * 3) > 0.3;
 
     ctx.save();
