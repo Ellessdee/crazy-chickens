@@ -1604,10 +1604,10 @@ function drawMenu() {
     ctx.fillRect(0, 0, w, h);
 
     // === BACKGROUND IMAGE (contain-fit: show entire image) ===
+    let dx = 0, dy = 0, dw = w, dh = h;
     if (menuBgLoaded) {
         const imgRatio = menuBgImage.width / menuBgImage.height;
         const canvasRatio = w / h;
-        let dw, dh, dx, dy;
         if (canvasRatio > imgRatio) {
             // Canvas wider than image — fit height, center horizontally
             dh = h * 0.72; // zoom out: only use 72% of height
@@ -1688,7 +1688,107 @@ function drawMenu() {
         }
     }
 
-    // (band-aid removed — doesn't align with zoomed-out image)
+    // === BAND-AID + LED — positioned relative to image draw area ===
+    // In the image, the laptop webcam area is roughly at 38% x, 16% y of the image
+    const bandX = dx + dw * 0.38;
+    const bandY = dy + dh * 0.16;
+    const ledOn = Math.sin(t * 3) > 0.3;
+
+    ctx.save();
+    ctx.translate(bandX, bandY);
+    ctx.rotate(0.12);
+    const bScale = dw / 800; // scale band-aid relative to image size
+
+    // Band-aid shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.roundRect(-18 * bScale, -6 * bScale, 36 * bScale, 13 * bScale, 6 * bScale);
+    ctx.fill();
+
+    // Band-aid body
+    ctx.fillStyle = '#d4a574';
+    ctx.beginPath();
+    ctx.roundRect(-17 * bScale, -7 * bScale, 34 * bScale, 12 * bScale, 5 * bScale);
+    ctx.fill();
+    ctx.strokeStyle = '#b8895a';
+    ctx.lineWidth = 0.6 * bScale;
+    ctx.stroke();
+
+    // Gauze pad
+    ctx.fillStyle = '#e8d8c4';
+    ctx.fillRect(-7 * bScale, -5 * bScale, 14 * bScale, 8 * bScale);
+
+    // Ventilation holes
+    ctx.fillStyle = '#c49a6e';
+    for (let bx = -4; bx <= 4; bx += 4) {
+        for (let by = -2; by <= 2; by += 4) {
+            ctx.beginPath();
+            ctx.arc(bx * bScale, by * bScale, 0.8 * bScale, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // Texture lines
+    ctx.strokeStyle = '#c49a6e';
+    ctx.lineWidth = 0.3 * bScale;
+    ctx.beginPath();
+    ctx.moveTo(-17 * bScale, -2 * bScale); ctx.lineTo(-8 * bScale, -2 * bScale);
+    ctx.moveTo(-17 * bScale, 1 * bScale); ctx.lineTo(-8 * bScale, 1 * bScale);
+    ctx.moveTo(8 * bScale, -2 * bScale); ctx.lineTo(17 * bScale, -2 * bScale);
+    ctx.moveTo(8 * bScale, 1 * bScale); ctx.lineTo(17 * bScale, 1 * bScale);
+    ctx.stroke();
+
+    // LED glow through band-aid
+    if (ledOn) {
+        const bandGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 14 * bScale);
+        bandGlow.addColorStop(0, 'rgba(255, 30, 30, 0.45)');
+        bandGlow.addColorStop(0.3, 'rgba(255, 30, 30, 0.15)');
+        bandGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctx.fillStyle = bandGlow;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14 * bScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Brighter center
+        ctx.fillStyle = 'rgba(255, 100, 100, 0.35)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 4 * bScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Light leaking around edges
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#ff2222';
+        ctx.beginPath();
+        ctx.ellipse(-7 * bScale, 0, 2 * bScale, 5 * bScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(7 * bScale, 0, 2 * bScale, 5 * bScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    } else {
+        ctx.fillStyle = 'rgba(80, 0, 0, 0.1)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 8 * bScale, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Peeling corner
+    ctx.fillStyle = '#ddb88a';
+    ctx.beginPath();
+    ctx.moveTo(15 * bScale, -7 * bScale);
+    ctx.quadraticCurveTo(18 * bScale, -8 * bScale, 17.5 * bScale, -4.5 * bScale);
+    ctx.lineTo(15 * bScale, -4.5 * bScale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(15 * bScale, -4.5 * bScale);
+    ctx.lineTo(17 * bScale, -4 * bScale);
+    ctx.lineTo(15 * bScale, -3.5 * bScale);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 
     // === MATRIX-STYLE FALLING CHARACTERS (subtle) ===
     ctx.font = '12px monospace';
