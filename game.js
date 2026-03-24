@@ -171,13 +171,13 @@ function playGameOver() {
 
 // ---- Character types (Simpsons-style humans) ----
 const characterTypes = [
-    { size: 1.0, speed: 1.0, points: 10, skin: '#ffd800', shirt: '#cc4400', pants: '#3355aa', hair: '#000', name: 'normal' },
-    { size: 0.7, speed: 1.6, points: 25, skin: '#ffd800', shirt: '#dd2266', pants: '#884488', hair: '#0055cc', name: 'fast' },
-    { size: 0.5, speed: 2.2, points: 50, skin: '#ffd800', shirt: '#22aa44', pants: '#553322', hair: '#ffd800', name: 'tiny' },
-    { size: 1.4, speed: 0.6, points: 5, skin: '#ffd800', shirt: '#ffffff', pants: '#666666', hair: '#888', name: 'fat' },
-    { size: 0.6, speed: 2.8, points: 75, skin: '#ffd800', shirt: '#ffcc00', pants: '#ffaa00', hair: '#ff4400', name: 'golden' },
+    { size: 1.0, speed: 1.0, points: 10, skin: '#ffd90f', shirt: '#ba4a00', pants: '#2855a0', hair: '#1a1a1a', shirtDetail: '#993d00', name: 'normal' },
+    { size: 0.7, speed: 1.6, points: 25, skin: '#ffd90f', shirt: '#c0275e', pants: '#6a3570', hair: '#2244aa', shirtDetail: '#a02050', name: 'fast' },
+    { size: 0.5, speed: 2.2, points: 50, skin: '#ffd90f', shirt: '#e8651a', pants: '#3377cc', hair: '#ffd90f', shirtDetail: '#cc5510', name: 'tiny' },
+    { size: 1.4, speed: 0.6, points: 5, skin: '#ffd90f', shirt: '#f0f0f0', pants: '#555555', hair: '#776633', shirtDetail: '#ddd', name: 'fat' },
+    { size: 0.6, speed: 2.8, points: 75, skin: '#ffd90f', shirt: '#cc0000', pants: '#1a1a1a', hair: '#cc2200', shirtDetail: '#aa0000', name: 'golden' },
 ];
-const chickenTypes = characterTypes; // keep reference for compatibility
+const chickenTypes = characterTypes;
 
 // ---- Character class (Simpsons-style) ----
 class Chicken {
@@ -188,43 +188,86 @@ class Chicken {
         this.color = type.skin;
         this.skin = type.skin;
         this.shirt = type.shirt;
+        this.shirtDetail = type.shirtDetail;
         this.pants = type.pants;
         this.hair = type.hair;
         this.name = type.name;
         const baseSize = 40 * this.size;
         this.w = baseSize * 2;
-        this.h = baseSize * 2.5;
+        this.h = baseSize * 2.8;
         this.dir = Math.random() < 0.5 ? 1 : -1;
         this.x = this.dir === 1 ? -this.w : W() + this.w;
-        this.y = 40 + Math.random() * (H() * 0.50);
+        this.y = 40 + Math.random() * (H() * 0.45);
         this.speedX = (80 + Math.random() * 100) * type.speed * this.dir;
-        this.speedY = Math.sin(Math.random() * Math.PI * 2) * 20;
         this.wobble = Math.random() * Math.PI * 2;
         this.wobbleSpeed = 2 + Math.random() * 3;
-        this.wingAngle = 0;
-        this.wingSpeed = 8 + Math.random() * 6;
+        this.walkCycle = Math.random() * Math.PI * 2;
+        this.walkSpeed = 6 + Math.random() * 4;
         this.alive = true;
-        this.fallSpeed = 0;
+
+        // Ragdoll death physics
+        this.fallSpeedY = 0;
+        this.fallSpeedX = 0;
         this.fallRotation = 0;
+        this.rotVelocity = 0;
+        this.bounceCount = 0;
         this.opacity = 1;
-        // Unique features
-        this.hasBeard = Math.random() < 0.15;
-        this.mouthOpen = Math.random() < 0.3;
-        this.eyeStyle = Math.floor(Math.random() * 3); // 0=normal, 1=angry, 2=surprised
+
+        // Personality — mostly unhappy
+        this.hasBeard = Math.random() < 0.2;
+        this.has5oClock = !this.hasBeard && Math.random() < 0.25;
+        this.wrinkles = Math.random() < 0.3;
+        this.baggyEyes = Math.random() < 0.4;
+        this.sweatDrop = Math.random() < 0.2;
+        // Expressions: 0=grumpy, 1=angry, 2=disgusted, 3=worried, 4=dead-inside
+        this.expression = Math.floor(Math.random() * 5);
+        // Mouth: 0=frown, 1=grimace, 2=yelling, 3=crooked
+        this.mouthType = Math.floor(Math.random() * 4);
+        // Hair variations
+        this.baldSpot = this.name === 'fat' || Math.random() < 0.15;
+        this.combOver = this.baldSpot && Math.random() < 0.5;
     }
 
     update(dt) {
         if (this.alive) {
             this.x += this.speedX * dt;
             this.wobble += this.wobbleSpeed * dt;
-            this.y += Math.sin(this.wobble) * 30 * dt;
-            this.wingAngle += this.wingSpeed * dt;
+            this.y += Math.sin(this.wobble) * 20 * dt;
+            this.walkCycle += this.walkSpeed * dt;
         } else {
-            this.fallSpeed += 600 * dt;
-            this.y += this.fallSpeed * dt;
-            this.fallRotation += 5 * dt * this.dir;
-            this.opacity -= 0.5 * dt;
+            // Ragdoll physics
+            this.fallSpeedY += 800 * dt; // strong gravity
+            this.x += this.fallSpeedX * dt;
+            this.y += this.fallSpeedY * dt;
+            this.fallRotation += this.rotVelocity * dt;
+            // Air drag on rotation
+            this.rotVelocity *= (1 - 0.8 * dt);
+            this.fallSpeedX *= (1 - 0.5 * dt);
+
+            // Bounce off bottom
+            if (this.y > H() - 60 && this.bounceCount < 3) {
+                this.y = H() - 60;
+                this.fallSpeedY *= -0.4; // energy loss on bounce
+                this.fallSpeedX *= 0.7;
+                this.rotVelocity += (Math.random() - 0.5) * 8;
+                this.bounceCount++;
+            }
+
+            // Fade after bouncing
+            if (this.bounceCount >= 2) {
+                this.opacity -= 0.8 * dt;
+            }
         }
+    }
+
+    kill() {
+        this.alive = false;
+        this.fallSpeedY = -200 - Math.random() * 150;
+        this.fallSpeedX = (Math.random() - 0.5) * 200;
+        this.rotVelocity = (Math.random() - 0.5) * 12;
+        // Switch to death expression
+        this.expression = 5; // dead
+        this.mouthType = 2; // scream
     }
 
     isOffScreen() {
@@ -232,14 +275,14 @@ class Chicken {
             return (this.dir === 1 && this.x > W() + this.w * 2) ||
                    (this.dir === -1 && this.x < -this.w * 2);
         }
-        return this.y > H() + 100 || this.opacity <= 0;
+        return this.opacity <= 0;
     }
 
     hitTest(mx, my) {
         if (!this.alive) return false;
         const dx = mx - this.x;
         const dy = my - this.y;
-        return Math.abs(dx) < this.w * 0.6 && Math.abs(dy) < this.h * 0.6;
+        return Math.abs(dx) < this.w * 0.6 && Math.abs(dy) < this.h * 0.5;
     }
 
     draw(ctx) {
@@ -250,231 +293,611 @@ class Chicken {
         ctx.scale(this.dir, 1);
 
         const s = this.size;
-        const outline = '#1a1a1a';
-        const lw = 2 * s;
-        const armSwing = Math.sin(this.wingAngle) * 0.4;
-        const legSwing = Math.sin(this.wingAngle * 0.6);
+        const OL = '#1a1a1a'; // outline color
+        const lw = 2.2 * s;
+        const walk = this.alive ? Math.sin(this.walkCycle) : 0;
+        const walk2 = this.alive ? Math.cos(this.walkCycle) : 0;
 
-        // === LEGS (behind body) ===
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw;
-        // Pants / legs
-        for (let leg = -1; leg <= 1; leg += 2) {
-            const lx = leg * 8 * s;
-            const swing = legSwing * leg * 4 * s;
-            // Pant leg
-            ctx.fillStyle = this.pants;
+        // === SHADOW (when alive) ===
+        if (this.alive) {
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.beginPath();
-            ctx.roundRect(lx - 5 * s, 18 * s, 10 * s, 20 * s + swing, [0, 0, 2 * s, 2 * s]);
+            ctx.ellipse(0, 44 * s, 20 * s, 5 * s, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.stroke();
-            // Shoe
-            ctx.fillStyle = '#333';
-            ctx.beginPath();
-            ctx.ellipse(lx + 3 * s, 39 * s + swing, 8 * s, 4 * s, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
         }
 
-        // === BODY / TORSO ===
-        // Shirt
+        // === LEGS ===
+        for (let leg = -1; leg <= 1; leg += 2) {
+            const lx = leg * 7 * s;
+            const legAngle = walk * leg * 0.3;
+            ctx.save();
+            ctx.translate(lx, 20 * s);
+            ctx.rotate(legAngle);
+
+            // Upper leg (pants)
+            ctx.fillStyle = this.pants;
+            ctx.strokeStyle = OL;
+            ctx.lineWidth = lw;
+            ctx.beginPath();
+            ctx.roundRect(-5.5 * s, 0, 11 * s, 14 * s, 2 * s);
+            ctx.fill();
+            ctx.stroke();
+
+            // Lower leg (pants)
+            ctx.fillStyle = shadeColor(this.pants, -15);
+            ctx.beginPath();
+            ctx.roundRect(-5 * s, 12 * s, 10 * s, 10 * s, [0, 0, 2 * s, 2 * s]);
+            ctx.fill();
+            ctx.stroke();
+
+            // Shoe — detailed
+            ctx.fillStyle = '#2a2218';
+            ctx.beginPath();
+            ctx.moveTo(-5 * s, 21 * s);
+            ctx.lineTo(10 * s, 21 * s);
+            ctx.quadraticCurveTo(14 * s, 21 * s, 14 * s, 24 * s);
+            ctx.lineTo(14 * s, 26 * s);
+            ctx.quadraticCurveTo(14 * s, 28 * s, 10 * s, 28 * s);
+            ctx.lineTo(-5 * s, 28 * s);
+            ctx.quadraticCurveTo(-7 * s, 28 * s, -7 * s, 25 * s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Shoe sole
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-6 * s, 26 * s, 20 * s, 2.5 * s);
+            // Shoe lace
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1 * s;
+            ctx.beginPath();
+            ctx.moveTo(0, 22 * s);
+            ctx.lineTo(4 * s, 22 * s);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // === TORSO ===
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+
+        // Belly (slightly rounded for fat type)
+        const bellyExtra = this.name === 'fat' ? 6 : 0;
         ctx.fillStyle = this.shirt;
         ctx.beginPath();
-        ctx.roundRect(-18 * s, -8 * s, 36 * s, 30 * s, [4 * s, 4 * s, 2 * s, 2 * s]);
+        ctx.moveTo(-16 * s, -10 * s);
+        ctx.lineTo(-16 * s, 22 * s);
+        ctx.lineTo(16 * s, 22 * s);
+        ctx.lineTo(16 * s, -10 * s);
+        // Belly bulge
+        ctx.quadraticCurveTo((8 + bellyExtra) * s, -(12 + bellyExtra * 0.5) * s, -16 * s, -10 * s);
+        ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw;
         ctx.stroke();
 
-        // Collar
-        ctx.fillStyle = shadeColor(this.shirt, -30);
+        // Shirt wrinkles / fold lines
+        ctx.strokeStyle = this.shirtDetail;
+        ctx.lineWidth = 1 * s;
         ctx.beginPath();
-        ctx.moveTo(-8 * s, -8 * s);
-        ctx.lineTo(0, -2 * s);
-        ctx.lineTo(8 * s, -8 * s);
+        ctx.moveTo(-6 * s, 2 * s);
+        ctx.quadraticCurveTo(-2 * s, 5 * s, -8 * s, 10 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(8 * s, 0);
+        ctx.quadraticCurveTo(6 * s, 6 * s, 10 * s, 12 * s);
+        ctx.stroke();
+
+        // Belt
+        ctx.fillStyle = '#3a2a18';
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        ctx.fillRect(-16 * s, 17 * s, 32 * s, 4 * s);
+        ctx.strokeRect(-16 * s, 17 * s, 32 * s, 4 * s);
+        // Belt buckle
+        ctx.fillStyle = '#b8960f';
+        ctx.fillRect(-2 * s, 17.5 * s, 4 * s, 3 * s);
+        ctx.strokeStyle = '#8a7008';
+        ctx.lineWidth = 1 * s;
+        ctx.strokeRect(-2 * s, 17.5 * s, 4 * s, 3 * s);
+
+        // Collar / neckline
+        ctx.fillStyle = shadeColor(this.shirt, -25);
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.moveTo(-10 * s, -10 * s);
+        ctx.quadraticCurveTo(-4 * s, -5 * s, 0, -3 * s);
+        ctx.quadraticCurveTo(4 * s, -5 * s, 10 * s, -10 * s);
+        ctx.lineTo(8 * s, -10 * s);
+        ctx.quadraticCurveTo(0, -1 * s, -8 * s, -10 * s);
         ctx.closePath();
         ctx.fill();
 
         // === ARMS ===
-        ctx.lineWidth = lw;
         for (let arm = -1; arm <= 1; arm += 2) {
+            const armAngle = walk2 * arm * 0.35;
             ctx.save();
-            ctx.translate(arm * 18 * s, 0);
-            ctx.rotate(armSwing * arm * 0.6);
-            // Upper arm (shirt color)
+            ctx.translate(arm * 16 * s, -4 * s);
+            ctx.rotate(armAngle + (arm === -1 ? -0.1 : 0.1));
+
+            // Sleeve
             ctx.fillStyle = this.shirt;
+            ctx.strokeStyle = OL;
+            ctx.lineWidth = lw;
             ctx.beginPath();
-            ctx.roundRect(-4 * s, -4 * s, 8 * s, 18 * s, 3 * s);
+            ctx.roundRect(-5 * s, -2 * s, 10 * s, 14 * s, 3 * s);
             ctx.fill();
-            ctx.strokeStyle = outline;
             ctx.stroke();
-            // Hand (skin)
+
+            // Forearm (skin)
             ctx.fillStyle = this.skin;
             ctx.beginPath();
-            ctx.arc(0, 18 * s, 5 * s, 0, Math.PI * 2);
+            ctx.roundRect(-4 * s, 10 * s, 8 * s, 12 * s, 2 * s);
             ctx.fill();
-            ctx.strokeStyle = outline;
             ctx.stroke();
+
+            // Hand with fingers (Simpsons 4 fingers)
+            ctx.fillStyle = this.skin;
+            ctx.beginPath();
+            ctx.arc(0, 24 * s, 5 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Finger lines
+            ctx.strokeStyle = shadeColor(this.skin, -40);
+            ctx.lineWidth = 0.8 * s;
+            for (let f = 0; f < 3; f++) {
+                const fa = -0.6 + f * 0.4;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(fa) * 3 * s, 24 * s + Math.sin(fa) * 3 * s);
+                ctx.lineTo(Math.cos(fa) * 7 * s, 24 * s + Math.sin(fa) * 7 * s);
+                ctx.stroke();
+            }
+
             ctx.restore();
         }
 
         // === NECK ===
         ctx.fillStyle = this.skin;
-        ctx.fillRect(-5 * s, -15 * s, 10 * s, 10 * s);
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        ctx.fillRect(-6 * s, -18 * s, 12 * s, 10 * s);
+        // Neck lines
+        ctx.strokeStyle = shadeColor(this.skin, -30);
+        ctx.lineWidth = 0.8 * s;
+        ctx.beginPath();
+        ctx.moveTo(-3 * s, -14 * s);
+        ctx.lineTo(-2 * s, -10 * s);
+        ctx.stroke();
+
+        // Adam's apple
+        ctx.fillStyle = shadeColor(this.skin, -10);
+        ctx.beginPath();
+        ctx.ellipse(2 * s, -13 * s, 2 * s, 3 * s, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         // === HEAD ===
-        // Simpsons: big round yellow head, overbite
+        ctx.fillStyle = this.skin;
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        // Simpsons head: cylindrical top, jaw protrusion
+        ctx.beginPath();
+        ctx.moveTo(-17 * s, -25 * s);
+        ctx.quadraticCurveTo(-18 * s, -50 * s, -10 * s, -52 * s);
+        ctx.lineTo(10 * s, -52 * s);
+        ctx.quadraticCurveTo(18 * s, -50 * s, 18 * s, -35 * s);
+        // Jaw juts forward (overbite)
+        ctx.quadraticCurveTo(19 * s, -25 * s, 22 * s, -22 * s);
+        ctx.quadraticCurveTo(24 * s, -18 * s, 20 * s, -16 * s);
+        // Chin
+        ctx.quadraticCurveTo(14 * s, -14 * s, 8 * s, -16 * s);
+        // Under chin
+        ctx.quadraticCurveTo(0, -14 * s, -10 * s, -18 * s);
+        ctx.quadraticCurveTo(-16 * s, -20 * s, -17 * s, -25 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // === EAR ===
         ctx.fillStyle = this.skin;
         ctx.beginPath();
-        ctx.ellipse(0, -30 * s, 18 * s, 20 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(-17 * s, -32 * s, 5 * s, 7 * s, -0.1, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw;
+        ctx.stroke();
+        // Inner ear
+        ctx.strokeStyle = shadeColor(this.skin, -30);
+        ctx.lineWidth = 1 * s;
+        ctx.beginPath();
+        ctx.arc(-17 * s, -32 * s, 3 * s, 0.5, Math.PI * 1.5);
         ctx.stroke();
 
         // === HAIR ===
         ctx.fillStyle = this.hair;
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
         if (this.name === 'tiny') {
-            // Spiky hair (like Bart)
-            for (let spike = -2; spike <= 2; spike++) {
-                ctx.beginPath();
-                ctx.moveTo((spike * 6 - 3) * s, -45 * s);
-                ctx.lineTo(spike * 6 * s, -58 * s);
-                ctx.lineTo((spike * 6 + 3) * s, -45 * s);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-            }
-        } else if (this.name === 'fat') {
-            // Few hairs (like Homer)
-            ctx.strokeStyle = this.hair;
-            ctx.lineWidth = 2 * s;
-            for (let h = -1; h <= 1; h++) {
-                ctx.beginPath();
-                ctx.moveTo(h * 5 * s, -48 * s);
-                ctx.quadraticCurveTo(h * 3 * s, -56 * s, h * 7 * s, -54 * s);
-                ctx.stroke();
-            }
-            ctx.strokeStyle = outline;
-        } else {
-            // Normal hair (poofy top)
+            // Bart-style spikes — 9 pointy spikes
             ctx.beginPath();
-            ctx.ellipse(0, -46 * s, 16 * s, 8 * s, 0, 0, Math.PI * 2);
+            ctx.moveTo(-12 * s, -48 * s);
+            const spikes = 9;
+            for (let i = 0; i < spikes; i++) {
+                const sx = -12 * s + (i / (spikes - 1)) * 24 * s;
+                const tipX = sx + (Math.random() - 0.3) * 2 * s;
+                ctx.lineTo(tipX, -62 * s - Math.random() * 4 * s);
+                if (i < spikes - 1) {
+                    ctx.lineTo(sx + 12 * s / (spikes - 1), -48 * s);
+                }
+            }
+            ctx.lineTo(12 * s, -48 * s);
+            ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = outline;
-            ctx.lineWidth = lw;
             ctx.stroke();
-            // Side hair
+        } else if (this.baldSpot) {
+            // Homer-style: bald dome, fringe around sides
+            // Side fringe
+            ctx.fillStyle = this.hair;
             ctx.beginPath();
-            ctx.ellipse(-14 * s, -35 * s, 6 * s, 12 * s, 0.2, 0, Math.PI * 2);
+            ctx.moveTo(-18 * s, -28 * s);
+            ctx.quadraticCurveTo(-20 * s, -35 * s, -18 * s, -40 * s);
+            ctx.lineTo(-14 * s, -40 * s);
+            ctx.quadraticCurveTo(-16 * s, -33 * s, -16 * s, -28 * s);
+            ctx.closePath();
             ctx.fill();
+            ctx.stroke();
+            // Combover strands
+            if (this.combOver) {
+                ctx.strokeStyle = this.hair;
+                ctx.lineWidth = 2 * s;
+                for (let h = 0; h < 3; h++) {
+                    ctx.beginPath();
+                    ctx.moveTo((-5 + h * 5) * s, -52 * s);
+                    ctx.quadraticCurveTo((-3 + h * 4) * s, -56 * s, (h * 6) * s, -54 * s);
+                    ctx.stroke();
+                }
+            } else {
+                // Single zig-zag hair strand
+                ctx.strokeStyle = this.hair;
+                ctx.lineWidth = 2.5 * s;
+                ctx.beginPath();
+                ctx.moveTo(-2 * s, -52 * s);
+                ctx.lineTo(0, -57 * s);
+                ctx.lineTo(3 * s, -53 * s);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = OL;
+        } else if (this.name === 'fast') {
+            // Tall beehive / Marge-ish
+            ctx.beginPath();
+            ctx.roundRect(-10 * s, -76 * s, 20 * s, 30 * s, [8 * s, 8 * s, 2 * s, 2 * s]);
+            ctx.fill();
+            ctx.stroke();
+            // Base hair
+            ctx.beginPath();
+            ctx.ellipse(0, -48 * s, 16 * s, 6 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            // Hair lines
+            ctx.strokeStyle = shadeColor(this.hair, -30);
+            ctx.lineWidth = 1 * s;
+            for (let hl = 0; hl < 4; hl++) {
+                const hy = -72 * s + hl * 7 * s;
+                ctx.beginPath();
+                ctx.moveTo(-7 * s, hy);
+                ctx.quadraticCurveTo(0, hy - 2 * s, 7 * s, hy);
+                ctx.stroke();
+            }
+        } else {
+            // Generic messy/unkempt hair
+            ctx.beginPath();
+            ctx.moveTo(-16 * s, -40 * s);
+            ctx.quadraticCurveTo(-14 * s, -56 * s, -4 * s, -56 * s);
+            ctx.quadraticCurveTo(4 * s, -58 * s, 10 * s, -54 * s);
+            ctx.quadraticCurveTo(16 * s, -52 * s, 16 * s, -42 * s);
+            ctx.quadraticCurveTo(17 * s, -36 * s, 16 * s, -32 * s);
+            ctx.lineTo(-16 * s, -32 * s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Messy strands
+            ctx.strokeStyle = shadeColor(this.hair, -20);
+            ctx.lineWidth = 1.5 * s;
+            ctx.beginPath();
+            ctx.moveTo(-8 * s, -55 * s);
+            ctx.quadraticCurveTo(-12 * s, -60 * s, -6 * s, -62 * s);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(6 * s, -54 * s);
+            ctx.quadraticCurveTo(12 * s, -59 * s, 8 * s, -61 * s);
             ctx.stroke();
         }
 
-        // === EYES (Simpsons: big white, bulging) ===
-        ctx.strokeStyle = outline;
+        // === EYES — big Simpsons style ===
+        ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        // Two big overlapping circles
+        const eyeY = -35 * s;
+
+        // Eyeballs (big, white, protruding)
         ctx.fillStyle = '#fff';
         ctx.beginPath();
-        ctx.ellipse(-5 * s, -33 * s, 8 * s, 9 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(-4 * s, eyeY, 9 * s, 10 * s, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(7 * s, -33 * s, 8 * s, 9 * s, 0, 0, Math.PI * 2);
+        ctx.ellipse(9 * s, eyeY, 9 * s, 10 * s, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
-        // Pupils
+        // Bloodshot lines (unhappy detail)
+        if (this.baggyEyes) {
+            ctx.strokeStyle = '#cc4444';
+            ctx.lineWidth = 0.5 * s;
+            ctx.globalAlpha *= 0.4;
+            for (let eye = 0; eye < 2; eye++) {
+                const ex = eye === 0 ? -4 * s : 9 * s;
+                for (let v = 0; v < 2; v++) {
+                    const a = -1.5 + v * 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(ex + Math.cos(a) * 5 * s, eyeY + Math.sin(a) * 5 * s);
+                    ctx.lineTo(ex + Math.cos(a) * 8 * s, eyeY + Math.sin(a) * 8 * s);
+                    ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = Math.max(0, this.opacity);
+        }
+
+        // Pupils — looking forward with dead/angry stare
         ctx.fillStyle = '#000';
-        const pupilOff = this.eyeStyle === 2 ? -2 * s : 2 * s;
-        ctx.beginPath();
-        ctx.arc(-3 * s + pupilOff, -33 * s, 3 * s, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(9 * s + pupilOff, -33 * s, 3 * s, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Eyebrows
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = 2.5 * s;
-        if (this.eyeStyle === 1) {
-            // Angry brows
-            ctx.beginPath();
-            ctx.moveTo(-12 * s, -44 * s);
-            ctx.lineTo(-1 * s, -41 * s);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(2 * s, -41 * s);
-            ctx.lineTo(14 * s, -44 * s);
-            ctx.stroke();
+        const isDead = this.expression === 5;
+        if (isDead) {
+            // X eyes
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2 * s;
+            for (let eye = 0; eye < 2; eye++) {
+                const ex = eye === 0 ? -4 * s : 9 * s;
+                ctx.beginPath();
+                ctx.moveTo(ex - 4 * s, eyeY - 4 * s);
+                ctx.lineTo(ex + 4 * s, eyeY + 4 * s);
+                ctx.moveTo(ex + 4 * s, eyeY - 4 * s);
+                ctx.lineTo(ex - 4 * s, eyeY + 4 * s);
+                ctx.stroke();
+            }
         } else {
+            const pupilSize = 3.5 * s;
+            const pupilX = 2 * s; // looking forward
             ctx.beginPath();
-            ctx.moveTo(-12 * s, -42 * s);
-            ctx.lineTo(-1 * s, -43 * s);
+            ctx.arc(-4 * s + pupilX, eyeY, pupilSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(9 * s + pupilX, eyeY, pupilSize, 0, Math.PI * 2);
+            ctx.fill();
+            // Tiny highlight
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-4 * s + pupilX - 1 * s, eyeY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(9 * s + pupilX - 1 * s, eyeY - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Eyelids (heavy, droopy — unhappy)
+        ctx.fillStyle = this.skin;
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = lw;
+        const lidDroop = this.expression === 4 ? 0.45 : // dead inside
+                         this.expression === 0 ? 0.3 :  // grumpy
+                         this.expression === 2 ? 0.25 :  // disgusted
+                         this.expression === 3 ? 0.1 :   // worried
+                         isDead ? 0 : 0.35;              // angry or dead
+        if (lidDroop > 0 && !isDead) {
+            for (let eye = 0; eye < 2; eye++) {
+                const ex = eye === 0 ? -4 * s : 9 * s;
+                ctx.beginPath();
+                ctx.ellipse(ex, eyeY - 5 * s, 10 * s, 8 * s * lidDroop, 0, 0, Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // Eyebrows — thick, expressive
+        ctx.strokeStyle = OL;
+        ctx.lineWidth = 3.5 * s;
+        ctx.lineCap = 'round';
+        const browAnger = this.expression === 1 ? 6 :   // angry
+                          this.expression === 0 ? 3 :    // grumpy
+                          this.expression === 2 ? 4 :    // disgusted
+                          this.expression === 3 ? -3 :   // worried (raised)
+                          isDead ? 0 : 2;
+        // Left brow
+        ctx.beginPath();
+        ctx.moveTo(-13 * s, (-46 - browAnger) * s);
+        ctx.quadraticCurveTo(-6 * s, (-48 + browAnger * 0.8) * s, 1 * s, (-45 + browAnger * 0.3) * s);
+        ctx.stroke();
+        // Right brow
+        ctx.beginPath();
+        ctx.moveTo(4 * s, (-45 + browAnger * 0.3) * s);
+        ctx.quadraticCurveTo(10 * s, (-48 + browAnger * 0.5) * s, 16 * s, (-46 - browAnger * 0.6) * s);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+
+        // Bags under eyes
+        if (this.baggyEyes) {
+            ctx.strokeStyle = shadeColor(this.skin, -25);
+            ctx.lineWidth = 1.2 * s;
+            for (let eye = 0; eye < 2; eye++) {
+                const ex = eye === 0 ? -4 * s : 9 * s;
+                ctx.beginPath();
+                ctx.arc(ex, eyeY + 4 * s, 6 * s, 0.3, Math.PI - 0.3);
+                ctx.stroke();
+            }
+        }
+
+        // Wrinkles
+        if (this.wrinkles) {
+            ctx.strokeStyle = shadeColor(this.skin, -20);
+            ctx.lineWidth = 0.8 * s;
+            // Forehead
+            ctx.beginPath();
+            ctx.moveTo(-8 * s, -47 * s);
+            ctx.quadraticCurveTo(0, -48 * s, 8 * s, -47 * s);
             ctx.stroke();
+            // Nasolabial fold
             ctx.beginPath();
-            ctx.moveTo(2 * s, -43 * s);
-            ctx.lineTo(14 * s, -42 * s);
+            ctx.moveTo(12 * s, -28 * s);
+            ctx.quadraticCurveTo(14 * s, -22 * s, 12 * s, -18 * s);
             ctx.stroke();
         }
 
-        // === NOSE ===
+        // === NOSE — big Simpsons schnoz ===
         ctx.fillStyle = this.skin;
-        ctx.strokeStyle = outline;
+        ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
         ctx.beginPath();
-        ctx.ellipse(14 * s, -28 * s, 5 * s, 4 * s, 0.3, 0, Math.PI * 2);
+        ctx.moveTo(6 * s, -30 * s);
+        ctx.quadraticCurveTo(20 * s, -32 * s, 22 * s, -26 * s);
+        ctx.quadraticCurveTo(23 * s, -22 * s, 18 * s, -22 * s);
+        ctx.quadraticCurveTo(14 * s, -22 * s, 12 * s, -24 * s);
+        ctx.closePath();
         ctx.fill();
         ctx.stroke();
+        // Nostril
+        ctx.fillStyle = shadeColor(this.skin, -35);
+        ctx.beginPath();
+        ctx.ellipse(17 * s, -24 * s, 2 * s, 1.5 * s, 0.3, 0, Math.PI * 2);
+        ctx.fill();
 
-        // === MOUTH (Simpsons overbite) ===
-        ctx.strokeStyle = outline;
+        // === MOUTH — unhappy expressions ===
+        ctx.strokeStyle = OL;
         ctx.lineWidth = lw;
-        if (this.mouthOpen) {
-            // Open mouth
-            ctx.fillStyle = '#8B0000';
+        const mouthY = -18 * s;
+
+        if (isDead) {
+            // Wavy death mouth
             ctx.beginPath();
-            ctx.ellipse(8 * s, -20 * s, 8 * s, 5 * s, 0, 0, Math.PI * 2);
+            ctx.moveTo(4 * s, mouthY);
+            ctx.quadraticCurveTo(8 * s, mouthY + 3 * s, 11 * s, mouthY);
+            ctx.quadraticCurveTo(14 * s, mouthY - 3 * s, 18 * s, mouthY);
+            ctx.stroke();
+            // Tongue hanging out
+            ctx.fillStyle = '#cc3355';
+            ctx.beginPath();
+            ctx.ellipse(12 * s, mouthY + 3 * s, 3 * s, 5 * s, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        } else if (this.mouthType === 0) {
+            // Deep frown
+            ctx.lineWidth = 2.5 * s;
+            ctx.beginPath();
+            ctx.moveTo(4 * s, mouthY);
+            ctx.quadraticCurveTo(12 * s, mouthY + 8 * s, 20 * s, mouthY + 1 * s);
+            ctx.stroke();
+            // Overbite bump
+            ctx.fillStyle = this.skin;
+            ctx.lineWidth = lw;
+            ctx.beginPath();
+            ctx.ellipse(14 * s, mouthY - 1 * s, 7 * s, 3 * s, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = OL;
+            ctx.stroke();
+        } else if (this.mouthType === 1) {
+            // Grimace with teeth
+            ctx.fillStyle = '#4a0000';
+            ctx.beginPath();
+            ctx.moveTo(4 * s, mouthY - 2 * s);
+            ctx.lineTo(20 * s, mouthY - 2 * s);
+            ctx.quadraticCurveTo(21 * s, mouthY + 4 * s, 12 * s, mouthY + 5 * s);
+            ctx.quadraticCurveTo(3 * s, mouthY + 4 * s, 4 * s, mouthY - 2 * s);
+            ctx.closePath();
             ctx.fill();
             ctx.stroke();
             // Teeth
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(2 * s, -23 * s, 12 * s, 3 * s);
-            ctx.strokeRect(2 * s, -23 * s, 12 * s, 3 * s);
-        } else {
-            // Overbite line
+            ctx.fillStyle = '#ffffee';
+            ctx.fillRect(5 * s, mouthY - 2 * s, 14 * s, 3 * s);
+            ctx.strokeRect(5 * s, mouthY - 2 * s, 14 * s, 3 * s);
+            // Individual teeth lines
+            ctx.lineWidth = 0.8 * s;
+            for (let t = 0; t < 4; t++) {
+                const tx = 7 * s + t * 3 * s;
+                ctx.beginPath();
+                ctx.moveTo(tx, mouthY - 2 * s);
+                ctx.lineTo(tx, mouthY + 1 * s);
+                ctx.stroke();
+            }
+        } else if (this.mouthType === 2) {
+            // Yelling / screaming O
+            ctx.fillStyle = '#3a0000';
             ctx.beginPath();
-            ctx.moveTo(4 * s, -20 * s);
-            ctx.quadraticCurveTo(12 * s, -16 * s, 18 * s, -20 * s);
-            ctx.stroke();
-            // Upper lip bump
-            ctx.fillStyle = this.skin;
-            ctx.beginPath();
-            ctx.ellipse(12 * s, -21 * s, 6 * s, 3 * s, 0, 0, Math.PI);
+            ctx.ellipse(12 * s, mouthY + 1 * s, 7 * s, 6 * s, 0.1, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = outline;
+            ctx.stroke();
+            // Teeth top
+            ctx.fillStyle = '#ffffee';
+            ctx.beginPath();
+            ctx.ellipse(12 * s, mouthY - 3 * s, 5 * s, 2 * s, 0, 0, Math.PI);
+            ctx.fill();
+            ctx.stroke();
+            // Uvula
+            ctx.fillStyle = '#cc3355';
+            ctx.beginPath();
+            ctx.ellipse(12 * s, mouthY + 4 * s, 2 * s, 2.5 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Crooked frown
+            ctx.lineWidth = 2.5 * s;
+            ctx.beginPath();
+            ctx.moveTo(4 * s, mouthY + 2 * s);
+            ctx.quadraticCurveTo(10 * s, mouthY + 5 * s, 14 * s, mouthY);
+            ctx.quadraticCurveTo(17 * s, mouthY - 2 * s, 20 * s, mouthY + 3 * s);
             ctx.stroke();
         }
 
-        // === BEARD (optional) ===
-        if (this.hasBeard) {
-            ctx.fillStyle = '#555';
-            ctx.globalAlpha *= 0.4;
+        // === 5 O'CLOCK SHADOW ===
+        if (this.has5oClock) {
+            ctx.fillStyle = '#888';
+            ctx.globalAlpha *= 0.15;
             ctx.beginPath();
-            ctx.ellipse(5 * s, -16 * s, 14 * s, 8 * s, 0, 0, Math.PI);
+            ctx.ellipse(10 * s, -17 * s, 14 * s, 8 * s, 0.1, 0, Math.PI);
             ctx.fill();
             ctx.globalAlpha = Math.max(0, this.opacity);
         }
 
-        // === EAR ===
-        ctx.fillStyle = this.skin;
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = lw;
-        ctx.beginPath();
-        ctx.ellipse(-16 * s, -30 * s, 4 * s, 6 * s, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        // === BEARD ===
+        if (this.hasBeard) {
+            ctx.fillStyle = shadeColor(this.hair, 20);
+            ctx.strokeStyle = OL;
+            ctx.lineWidth = lw;
+            ctx.beginPath();
+            ctx.moveTo(2 * s, -18 * s);
+            ctx.quadraticCurveTo(0, -10 * s, 6 * s, -8 * s);
+            ctx.quadraticCurveTo(14 * s, -8 * s, 18 * s, -14 * s);
+            ctx.quadraticCurveTo(20 * s, -18 * s, 16 * s, -18 * s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // Beard texture
+            ctx.strokeStyle = shadeColor(this.hair, -10);
+            ctx.lineWidth = 0.7 * s;
+            for (let bl = 0; bl < 4; bl++) {
+                const bx = 5 * s + bl * 3 * s;
+                ctx.beginPath();
+                ctx.moveTo(bx, -16 * s);
+                ctx.lineTo(bx + 1 * s, -10 * s);
+                ctx.stroke();
+            }
+        }
+
+        // === SWEAT DROP ===
+        if (this.sweatDrop && this.alive) {
+            const sweatBob = Math.sin(this.walkCycle * 2) * 2 * s;
+            ctx.fillStyle = '#66ccff';
+            ctx.strokeStyle = OL;
+            ctx.lineWidth = 1 * s;
+            ctx.beginPath();
+            ctx.moveTo(-14 * s, -40 * s + sweatBob);
+            ctx.quadraticCurveTo(-18 * s, -36 * s + sweatBob, -14 * s, -33 * s + sweatBob);
+            ctx.quadraticCurveTo(-10 * s, -36 * s + sweatBob, -14 * s, -40 * s + sweatBob);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
 
         ctx.restore();
     }
@@ -1414,20 +1837,20 @@ function drawMenu() {
     const glitch = Math.random() < 0.05;
     if (glitch) {
         ctx.fillStyle = '#ff0040';
-        ctx.fillText('CRAZY HUMANS', w / 2 + 3, h * 0.18 - 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 + 3, h * 0.18 - 2);
         ctx.fillStyle = '#00ffaa';
-        ctx.fillText('CRAZY HUMANS', w / 2 - 3, h * 0.18 + 2);
+        ctx.fillText('CREAZY CREEPS', w / 2 - 3, h * 0.18 + 2);
     }
     ctx.fillStyle = '#00ff41';
     ctx.shadowColor = '#00ff41';
     ctx.shadowBlur = 15;
-    ctx.fillText('CRAZY HUMANS', w / 2, h * 0.18);
+    ctx.fillText('CREAZY CREEPS', w / 2, h * 0.18);
     ctx.shadowBlur = 0;
 
     // Subtitle
     ctx.fillStyle = '#4a8a4a';
     ctx.font = `${Math.min(18, w * 0.025)}px monospace`;
-    ctx.fillText('> initializing human_hunt.exe ...', w / 2, h * 0.18 + 35);
+    ctx.fillText('> initializing creep_hunt.exe ...', w / 2, h * 0.18 + 35);
 
     // High score
     if (highScore > 0) {
@@ -1451,7 +1874,7 @@ function drawMenu() {
     ctx.fillStyle = '#335533';
     ctx.font = `${Math.min(13, w * 0.017)}px monospace`;
     const instructions = [
-        'SHOOT humans | R = reload | P = POOP MODE | 90 sec',
+        'SHOOT creeps | R = reload | P = POOP MODE | 90 sec',
     ];
     instructions.forEach((line, i) => {
         ctx.fillText(line, w / 2, h * 0.97 + i * 18);
@@ -1555,8 +1978,7 @@ function shoot() {
     for (let i = chickens.length - 1; i >= 0; i--) {
         const c = chickens[i];
         if (c.hitTest(mouseX, mouseY)) {
-            c.alive = false;
-            c.fallSpeed = -100;
+            c.kill();
             hit = true;
 
             // Points with combo
@@ -1677,8 +2099,7 @@ function updateGame(dt) {
             const c = chickens[i];
             if (poop.hitTest(c)) {
                 poop.splat();
-                c.alive = false;
-                c.fallSpeed = -80;
+                c.kill();
 
                 // Points with combo
                 comboTimer = 1.5;
